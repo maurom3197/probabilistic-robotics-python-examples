@@ -49,7 +49,9 @@ def sample_from_z_dist(z, z_max, mix_density, sigma, lamb_short):
 
 def main():
 
-    z_star = np.load('ray_casting_z.npz')['D']
+    # z_star is the reference measurement computed with ray casting from the map
+    z_star = 5.5*np.ones((6)) # in this case we only assume a fixed range value 
+    #z_star = np.load('ray_casting_z.npz')['D']
     z_max = 8.0  # Sensor range
     data_num = 5000
     outputs = np.zeros((2,data_num))
@@ -58,30 +60,8 @@ def main():
     #### Generate pseudo-realistic laser range ####
     ###############################################
 
-    # for i in range(data_num):
-    #     z = generate_laser_data(z_star[0], z_max) # little noise
-    #     outputs[:,i] = z_star[0], z
-
-
-    # plt.plot(outputs[1,:], 'o')
-    # plt.ylim([0, z_max+0.5])
-    # plt.title("Real measurements z")
-    # plt.savefig("z_real.pdf")
-    # plt.show()
-
-    # np.savez('beam_range_data.npz', D=outputs)
-    # plot_sampling_dist(outputs[1,:], fig_name="z_generated_hist.pdf")
-
-    # plt.close('all')    
-
-    ##############################################
-    ### Generate data sampling from p(z|x,m)  ####
-    ##############################################
-
-    mix_density, sigma, lamb_short = [0.7, 0.2, 0.05, 0.05], 1.0, 0.9
-
     for i in range(data_num):
-        z = sample_from_z_dist(z_star[0], z_max, mix_density, sigma, lamb_short) 
+        z = generate_laser_data(z_star[0], z_max) # little noise
         outputs[:,i] = z_star[0], z
 
 
@@ -91,10 +71,32 @@ def main():
     plt.savefig("z_real.pdf")
     plt.show()
 
-    np.savez('noisy_beam_range_data.npz', D=outputs)
-
+    np.savez('beam_range_data.npz', D=outputs)
     plot_sampling_dist(outputs[1,:], fig_name="z_generated_hist.pdf")
-    plt.close('all')
+
+    plt.close('all')    
+
+    ##############################################
+    ### Generate data sampling from p(z|x,m)  ####
+    ##############################################
+
+    # mix_density, sigma, lamb_short = [0.7, 0.2, 0.05, 0.05], 1.0, 0.9
+
+    # for i in range(data_num):
+    #     z = sample_from_z_dist(z_star[0], z_max, mix_density, sigma, lamb_short) 
+    #     outputs[:,i] = z_star[0], z
+
+
+    # plt.plot(outputs[1,:], 'o')
+    # plt.ylim([0, z_max+0.5])
+    # plt.title("Real measurements z")
+    # plt.savefig("z_real.pdf")
+    # plt.show()
+
+    # np.savez('noisy_beam_range_data.npz', D=outputs)
+
+    # plot_sampling_dist(outputs[1,:], fig_name="z_generated_hist.pdf")
+    # plt.close('all')
 
 if __name__ == "__main__":
     main()

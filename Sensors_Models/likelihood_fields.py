@@ -126,7 +126,7 @@ def plot_ray_prob(map_size, end_points, robot_pose, p_z):
     x = map_size[0]*np.ones_like(end_points[:,0]) - x
     col = p_z
     # draw endpoint with probability from Likelihood Fields
-    plt.scatter(y, x, s=50, c=col, cmap='viridis')
+    plt.scatter(y, x, s=50, c=col, cmap='gray')
     plt.colorbar()
 
     

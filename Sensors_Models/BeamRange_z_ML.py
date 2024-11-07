@@ -131,8 +131,8 @@ def ML_params_estimator(inputData, sensor_max, data_num):
 
 def main():
     # choose input range data
-    #inputData = np.load('beam_range_data.npz')['D'] # more realistic
-    inputData = np.load('noisy_beam_range_data.npz')['D'] # more noisy
+    inputData = np.load('beam_range_data.npz')['D'] # more realistic
+    #inputData = np.load('noisy_beam_range_data.npz')['D'] # more noisy
 
     z_max = 8.0  # Sensor max range
     data_num = 5000

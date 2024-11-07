@@ -185,7 +185,7 @@ def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
 
 def main():
     # global constants
-    map_path = '../../2D_maps/map0.png'
+    map_path = '../2D_maps/map0.png'
 
     xy_reso = 2
     map, grid_map = get_map(map_path, xy_reso)
@@ -193,7 +193,7 @@ def main():
     fov = math.pi / 4
     num_rays = 16
 
-    robot_pose = np.array([8, 12, math.pi/3])
+    robot_pose = np.array([8, 12, -1*math.pi/3])
     z_max = 16.0
 
     # cast rays: compute end points and laser measurements

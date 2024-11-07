@@ -2,12 +2,13 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from  matplotlib.patches import Arc
 
 arrow = u'$\u2191$'
 
 # Gaussian Function
 def gaussian(x, mean, sigma):
-    return (1 / np.sqrt(2 * np.pi * sigma ** 2)) * np.exp(- (x - mean) ** 2 / (2 * sigma ** 2))
+    return (1 / np.sqrt(2 * np.pi * sigma ** 2)) * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2))
 
 def normalized_gaussian(x, max_x, _sigma):
     normalize_hit = 0.0
@@ -19,15 +20,15 @@ def normalized_gaussian(x, max_x, _sigma):
 
     return p
 
-def landmark_range_bearing_sensor(robot_pose, landmark, max_range=6.0, fov=math.pi/2):
+def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fov=math.pi/2):
     """""
     Simulate the detection of a landmark with a virtual sensor able to estimate range and bearing
     """""
     m_x, m_y = landmark[:]
-    x, y, _ = robot_pose[:]
+    x, y, theta = robot_pose[:]
 
-    r_ = math.dist([x, y], [m_x, m_y]) + np.random.uniform(-0.3, 0.3)
-    phi_ = math.atan2(m_y - y, m_x - x) + np.random.uniform(-math.pi/24, math.pi/24)
+    r_ = math.dist([x, y], [m_x, m_y]) + np.random.normal(0., sigma[0])
+    phi_ = math.atan2(m_y - y, m_x - x) - theta + np.random.normal(0., sigma[1])
 
     # filter z for a more realistic sensor simulation (add a max range distance and a FOV)
     if r_ > max_range or abs(phi_) > fov / 2:
@@ -35,7 +36,7 @@ def landmark_range_bearing_sensor(robot_pose, landmark, max_range=6.0, fov=math.
 
     return [r_, phi_]
 
-def landmark_model_prob(z, landmark, robot_pose, sigma):
+def landmark_model_prob(z, landmark, robot_pose, max_range, fov, sigma):
     """""
     Landmark sensor model algorithm:
     Inputs:
@@ -47,12 +48,12 @@ def landmark_model_prob(z, landmark, robot_pose, sigma):
         according to the estimated range and bearing
     """""
     m_x, m_y = landmark[:]
-    x, y, _ = robot_pose[:]
+    x, y, theta = robot_pose[:]
     sigma_r, sigma_phi = sigma[:]
 
     r_hat = math.dist([x, y], [m_x, m_y])
-    phi_hat = math.atan2(m_y - y, m_x - x)
-    p = normalized_gaussian(z[0] - r_hat, 6.0, sigma_r) * normalized_gaussian(z[1] - phi_hat, math.pi/4, sigma_phi)
+    phi_hat = math.atan2(m_y - y, m_x - x) - theta
+    p = normalized_gaussian(z[0] - r_hat, max_range, sigma_r) * normalized_gaussian(z[1] - phi_hat, fov/2, sigma_phi)
 
     return p
 
@@ -90,7 +91,7 @@ def plot_sampled_poses(x, x_prime):
     plt.show()
 
 
-def plot_landmarks(landmarks, robot_pose, z, p_z, fov=math.pi/2):
+def plot_landmarks(landmarks, robot_pose, z, p_z, max_range=6.0, fov=math.pi/4):
 
     x, y, theta = robot_pose[:]
 
@@ -98,37 +99,44 @@ def plot_landmarks(landmarks, robot_pose, z, p_z, fov=math.pi/2):
     end_angle = theta - fov/2
 
     plt.figure()
+    ax = plt.gca()
     # plot robot pose
     # find the virtual end point for orientation
-    endx = x + 0.5 * math.sin(theta)
-    endy = y + 0.5 * math.cos(theta)
-    plt.plot(y, x, 'or', ms=10)
-    plt.plot([y, endy], [x, endx], linewidth = '2', color='r')
+    endx = x + 0.5 * math.cos(theta)
+    endy = y + 0.5 * math.sin(theta)
+    plt.plot(x, y, 'or', ms=10)
+    plt.plot([x, endx], [y, endy], linewidth = '2', color='r')
 
     # plot FOV
     # get ray target coordinates
-    fov_x_left = x + math.sin(start_angle) * 6.0
-    fov_y_left = y + math.cos(start_angle) * 6.0
-    fov_x_right = x + math.sin(end_angle) * 6.0
-    fov_y_right = y + math.cos(end_angle) * 6.0
+    fov_x_left = x + math.cos(start_angle) * max_range
+    fov_y_left = y + math.sin(start_angle) * max_range
+    fov_x_right = x + math.cos(end_angle) * max_range
+    fov_y_right = y + math.sin(end_angle) * max_range
 
-    plt.plot([y, fov_y_left], [x, fov_x_left], linewidth = '1', color='b')
-    plt.plot([y, fov_y_right], [x, fov_x_right], linewidth = '1', color='b')
+    plt.plot([x, fov_x_left], [y, fov_y_left], linewidth = '1', color='b')
+    plt.plot([x, fov_x_right], [y, fov_y_right], linewidth = '1', color='b')
+
+    R = max_range
+    a, b = 2*R, 2*R
+    arc = Arc((x, y), a, b,
+                 theta1=math.degrees(end_angle), theta2=math.degrees(start_angle), color='b', lw=1.2)
+    ax.add_patch(arc)
 
     # plot landmarks
     for i, lm in enumerate(landmarks):
-        plt.plot(lm[1], lm[0], "sk", ms=10, alpha=0.7)
+        plt.plot(lm[0], lm[1], "sk", ms=10, alpha=0.7)
 
     # plot perceived landmarks position and associated probability (color scale)
     lm_z = np.zeros((len(z), 2))
     for i in range(len(z)):
         # draw endpoint with probability from Likelihood Fields
-        lx = x + z[i][0] * math.cos(z[i][1])
-        ly = y + z[i][0] * math.sin(z[i][1])
+        lx = x + z[i][0] * math.cos(z[i][1]+theta)
+        ly = y + z[i][0] * math.sin(z[i][1]+theta)
         lm_z[i, :] = lx, ly
     
     col = np.array(p_z)
-    plt.scatter(lm_z[:,1], lm_z[:,0], s=60, c=col, cmap='viridis')
+    plt.scatter(lm_z[:,0], lm_z[:,1], s=60, c=col, cmap='viridis')
     plt.colorbar()
 
     plt.show()
@@ -137,43 +145,44 @@ def plot_landmarks(landmarks, robot_pose, z, p_z, fov=math.pi/2):
 
 def main():
 
-    robot_pose = np.array([1., 0., math.pi/2])
+    robot_pose = np.array([0., 0., math.pi/4])
     landmarks = [
                  np.array([5., 2.]),
-                 np.array([8., 3.]),
+                 np.array([-2.5, 3.]),
                  np.array([3., 1.5]),
                  np.array([4., -1.]),
-                 np.array([2., -2.])
+                 np.array([-2., -2.])
                  ]
-    
-    sigma = np.array([0.3, math.pi/12])
+
+    fov = math.pi/3
+    max_range = 6.0
+    sigma = np.array([0.3, math.pi/24])
 
     z = []
     p = []
     for i in range(len(landmarks)):
         # read sensor measurements (range, bearing)
-        z_i = landmark_range_bearing_sensor(robot_pose, landmarks[i])
+        z_i = landmark_range_bearing_sensor(robot_pose, landmarks[i], sigma=sigma, max_range=max_range, fov=fov)
          
         if z_i is not None: # if landmark is not detected, the measurement is None
             z.append(z_i)
             # compute the probability for each measurement according to the landmark model algorithm
-            p_i = landmark_model_prob(z_i, landmarks[i], robot_pose, sigma)
+            p_i = landmark_model_prob(z_i, landmarks[i], robot_pose, max_range, fov, sigma)
             p.append(p_i)
 
-    print("Measured landmarks:", z)
     print("Probability density value:", p)
     # Plot landmarks, robot pose with sensor FOV, and detected landmarks with associated probability
-    plot_landmarks(landmarks, robot_pose, z, p)
+    plot_landmarks(landmarks, robot_pose, z, p, fov=fov)
 
     ##########################################
     ### Sampling poses from landmark model ###
     ##########################################
 
     landmark = landmarks[0]
-    z = landmark_range_bearing_sensor(robot_pose, landmark)
+    z = landmark_range_bearing_sensor(robot_pose, landmark, sigma)
 
     # plot landmark
-    plt.plot(landmark[1], landmark[0], "sk", ms=10)
+    plt.plot(landmark[0], landmark[1], "sk", ms=10)
 
     # plot samples poses
     for i in range(300):
@@ -181,12 +190,12 @@ def main():
         # plot robot pose
         rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
         rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(x_prime[2])-90)
-        plt.scatter(x_prime[1], x_prime[0], marker=rotated_marker, s=80, facecolors='none', edgecolors='b')
+        plt.scatter(x_prime[0], x_prime[1], marker=rotated_marker, s=80, facecolors='none', edgecolors='b')
     
     # plot real pose
     rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
     rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(robot_pose[2])-90)
-    plt.scatter(robot_pose[1], robot_pose[0], marker=rotated_marker, s=140, facecolors='none', edgecolors='r')
+    plt.scatter(robot_pose[0], robot_pose[1], marker=rotated_marker, s=140, facecolors='none', edgecolors='r')
     plt.show()
     
     plt.close('all')
