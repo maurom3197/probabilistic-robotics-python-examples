@@ -5,8 +5,8 @@
 
 
 <p align="center">
-  <img src=/readme_images/landmark_model_sampling.png alt="Alternative text" width="450">
-  <img src=/readme_images/multi_odometry_samples.png alt="Alternative text" width="450"/>
+  <img src=/readme_images/landmark_model_sampling.png alt="Alternative text" width="400">
+  <img src=/readme_images/multi_odometry_samples.png alt="Alternative text" width="400"/>
 </p>
 
 This repository contains Python script and notebooks to reproduce practical examples of popular algorithms presented in the Probabilistic Robotics book for didactic activities.
