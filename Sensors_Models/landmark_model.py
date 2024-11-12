@@ -73,20 +73,24 @@ def landmark_model_sample_pose(z, landmark, sigma):
     return np.array([x_, y_, theta_])
 
 
-def plot_sampled_poses(x, x_prime):
+def plot_sampled_poses(robot_pose, z, landmark, sigma):
 
-    rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
-    rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(x[2])-90)
-    plt.scatter(x[0], x[1], marker=rotated_marker, s=100, facecolors='none', edgecolors='b')
-
-    for x_ in x_prime[:200]:
+    # plot samples poses
+    for i in range(500):
+        x_prime = landmark_model_sample_pose(z, landmark, sigma)
+        # plot robot pose
         rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
-        rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(x_[2])-90)
-        plt.scatter(x_[0], x_[1], marker=rotated_marker, s=40, facecolors='none', edgecolors='r')
+        rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(x_prime[2])-90)
+        plt.scatter(x_prime[0], x_prime[1], marker=rotated_marker, s=80, facecolors='none', edgecolors='b')
+    
+    # plot real pose
+    rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
+    rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(robot_pose[2])-90)
+    plt.scatter(robot_pose[0], robot_pose[1], marker=rotated_marker, s=140, facecolors='none', edgecolors='r')
 
     plt.xlabel("x-position [m]")
     plt.ylabel("y-position [m]")
-    plt.title("landmark model - pose sampling")
+    plt.title("Landmark Model Pose Sampling")
     plt.savefig("landmark_model_sampling.pdf")
     plt.show()
 
@@ -183,20 +187,7 @@ def main():
 
     # plot landmark
     plt.plot(landmark[0], landmark[1], "sk", ms=10)
-
-    # plot samples poses
-    for i in range(300):
-        x_prime = landmark_model_sample_pose(z, landmark, sigma)
-        # plot robot pose
-        rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
-        rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(x_prime[2])-90)
-        plt.scatter(x_prime[0], x_prime[1], marker=rotated_marker, s=80, facecolors='none', edgecolors='b')
-    
-    # plot real pose
-    rotated_marker = mpl.markers.MarkerStyle(marker=arrow)
-    rotated_marker._transform = rotated_marker.get_transform().rotate_deg(math.degrees(robot_pose[2])-90)
-    plt.scatter(robot_pose[0], robot_pose[1], marker=rotated_marker, s=140, facecolors='none', edgecolors='r')
-    plt.show()
+    plot_sampled_poses(robot_pose, z, landmark, sigma)
     
     plt.close('all')
 
