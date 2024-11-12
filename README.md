@@ -5,7 +5,8 @@
 
 
 <p align="center">
-  <img src=/readme_images/landmark_model_sampling.pdf alt="Alternative text" width="550">
+  <img src=/readme_images/landmark_model_sampling.png alt="Alternative text" width="350">
+  <img src=/readme_images/multi_odometry_samples.png alt="Alternative text" width="350"/>
 </p>
 
 This repository contains Python script and notebooks to reproduce practical examples of popular algorithms presented in the Probabilistic Robotics book for didactic activities.
@@ -26,8 +27,7 @@ This repository contains Python script and notebooks to reproduce practical exam
     - utils: utility functions (residual, mean, metrics), plot_utils
 
 <p align="center">
-  <img src=/readme_images/multi_odometry_samples.pdf alt=" width="450"/>
-  <img src=/readme_images/expected_output_odom.png alt=" width="450"/>
+  <img src=/readme_images/expected_output_odom.png alt="Alternative text" width="450"/>
 </p>
 
 # References
