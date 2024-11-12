@@ -7,8 +7,12 @@ import skimage
 
 
 def get_map(map_path, xy_reso, plot_map=False):
-    # load the image and convert into
-    # numpy array
+    """"
+    Load the image of the 2D map and convert into numpy ndarray with xy resolution
+    Return:
+      - full map: np array
+      - gridmap resized: np array
+    """
     img = Image.open(map_path)
     npmap = np.asarray(img, dtype=int)
     print("Map size:", npmap.shape)
@@ -33,7 +37,15 @@ def calc_grid_map_config(map_size, xyreso):
     return xw, yw
 
 def compute_map_occ(map):
-    
+    """""
+    Compute occupancy state for each cell of the gridmap 
+    Possible states: 
+      - occupied = 1 (obstacle present)
+      - free = 0
+      - unknown = not defined (usually -1)
+    Returns two np arrays with poses of the obstacles in the map and all the map poses.
+    It supports the pre-computation of likelihood field over the entire map
+    """""
     n_o = np.count_nonzero(map)
     obst_poses = np.zeros((n_o, 2), dtype=int)
     end_points = np.zeros((map.shape[0]*map.shape[1], 2), dtype=int)

@@ -8,7 +8,7 @@ class RobotEKF:
         dim_u=1,
         eval_gux=None,
         eval_Gt=None,
-        eval_Vt=None
+        eval_Vt=None,
     ):
         """
         Initializes the extended Kalman filter creating the necessary matrices
@@ -48,6 +48,7 @@ class RobotEKF:
         args = (*self.mu, *u)
         # Update the covariance matrix of the state prediction,
         # you need to evaluate the Jacobians Gt and Vt
+
         Gt = self.eval_Gt(*args, *g_extra_args)
         Vt = self.eval_Vt(*args, *g_extra_args)
         self.Sigma = Gt @ self.Sigma @ Gt.T + Vt @ self.Mt @ Vt.T
@@ -86,11 +87,7 @@ class RobotEKF:
         z_hat = eval_hx(*hx_args)
 
         # if the z measurement include an angle update, we need to specify the positional index to normalize the residual
-        if 'angle_idx' in kwargs:
-            angle_indx = kwargs["angle_idx"]
-            y = residual(z, z_hat, angle_indx)
-        else: 
-            y = residual(z, z_hat)
+        y = residual(z, z_hat, **kwargs)
         self.mu = self.mu + self.K @ y
 
         # P = (I-KH)P(I-KH)' + KRK' is more numerically stable and works for non-optimal K vs the equation
