@@ -11,7 +11,7 @@ def gaussian(x, mean, sigma):
 
 # Normalized Gaussian pdf
 def compute_p_hit(dist, max_dist, _sigma):
-    normalize_hit = 0.0
+    normalize_hit = 1e-9
     for j in range(round(max_dist)):
         normalize_hit += gaussian(j, 0., _sigma)
     normalize_hit = 1. / normalize_hit
@@ -143,7 +143,7 @@ def main():
     num_rays = 32
 
     robot_pose = np.array([12, 9, 2*math.pi/3])
-    z_max = 8.0
+    z_max = 10.0
 
     ###########################################################
     #### simulate Laser range with ray casting + some noise ###
