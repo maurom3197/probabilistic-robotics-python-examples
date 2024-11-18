@@ -114,7 +114,8 @@ class RobotPF:
         if np.isscalar(z):
             z = np.asarray([z], float)
 
-        sigma_z = [sigma_z[0] * 4.0, sigma_z[1] * np.pi] 
+        # sigma_z = [sigma_z[0] * 4.0, sigma_z[1] * np.pi] 
+        sigma_z = sigma_z * 3.0
         # Evaluate the expected measurement and compute the residual, then update the state prediction
         z_hat = np.zeros((self.N, 2))
         # for i in range(self.N):
@@ -132,7 +133,7 @@ class RobotPF:
         # if np.any(prob != 0.0):
         #     print(f"z: {z}, z_hat: {z_hat} ", "prob: ", prob, np.prod(prob))
         # print(f"z: {z[k]}, z_hat: {z_hat[k]}, prob: {prob}")
-        self.weights *= np.prod(prob)
+        self.weights *= np.prod(prob, axis=1)
 
 
     def normalize_weights(self):

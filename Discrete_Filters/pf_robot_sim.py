@@ -73,6 +73,7 @@ def run_localization_sim(
         track_odom.append(odom_pos)
 
         if i % pf_step == 0 and i != 0:  # only update pf at dt intervals
+            # print("Step: ", i, " - NEFF: ", pf.neff(), " - N_PARTICLES: ", len(pf.particles))
             # run the prediction step of the PF
             if motion_model == "velocity":
                 pf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(pf_dt,))
@@ -103,7 +104,7 @@ def run_localization_sim(
             if neff < pf.N / 2:
                 pf.resampling(
                     resampling_fn=pf.resampling_fn,  # simple, residual, stratified, systematic
-                    resampling_args=(pf.weights, ),  # tuple: only pf.weights if using pre-defined functions
+                    resampling_args=(pf.weights,),  # tuple: only pf.weights if using pre-defined functions
                 )
                 assert np.allclose(pf.weights, 1 / pf.N)
 
@@ -115,6 +116,8 @@ def run_localization_sim(
                 legend_PF1, legend_PF2 = plot_particles(pf.particles, sim_pos, pf.mu, ax=ax[0])
             track_pf.append(pf.mu.copy())
 
+            # print("Step: ", i, " - NEFF: ", neff, " - N_PARTICLES: ", len(pf.particles))
+
     # draw plots
     track = np.array(track)
     track_odom = np.array(track_odom)
@@ -125,7 +128,7 @@ def run_localization_sim(
     (track_odom_legend,) = ax[0].plot(track_odom[:, 0], track_odom[:, 1], "--", label="Odometry path")
     ax[0].axis("equal")
     ax[0].set_title("PF Robot localization")
-    ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend,legend_PF1, legend_PF2])
+    ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend, legend_PF1, legend_PF2])
 
     # error plots
     (pf_err,) = ax[1].plot(
@@ -161,7 +164,7 @@ def main():
     )
     # sensor params
     max_range = 8.0
-    fov = math.pi/2
+    fov = math.pi / 2
 
     # sim params
     pf_dt = 1.0  # time interval between measurements [s]
