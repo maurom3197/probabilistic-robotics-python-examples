@@ -5,7 +5,13 @@ from utils import residual
 from plot_utils import plot_covariance
 import matplotlib.pyplot as plt
 from ekf import RobotEKF
-from probabilistic_models import sample_velocity_motion_model, sample_odometry_motion_model, get_odometry_command,landmark_range_bearing_model, landmark_range_bearing_sensor
+from probabilistic_models import (
+    sample_velocity_motion_model,
+    sample_odometry_motion_model,
+    get_odometry_command,
+    landmark_range_bearing_model,
+    landmark_range_bearing_sensor,
+)
 from probabilistic_models import velocity_mm_simpy, odometry_mm_simpy, landmark_sm_simpy
 
 
@@ -21,20 +27,20 @@ def run_localization_sim(
     Q_landm,
     sigma_u,
     sigma_z,
-    motion_model = 'velocity',
-    sigma_u_odom = 0.,
+    motion_model="velocity",
+    sigma_u_odom=0.0,
     sim_step_s=0.1,
     ellipse_step_s=5.0,
     sim_length_s=1,
     constant_vel=True,
-    ):
+):
 
     sim_pos = ekf.mu.copy()  # simulated position, copy the initial position set inside the EKF
     odom_pos = ekf.mu.copy()  # odometry position, copy the initial position set inside the EKF
 
     cmd_vel = np.array(
         [0.8, 0.03]
-    )   # velocity command (v, omega). In this case will be constant for the whole simulation
+    )  # velocity command (v, omega). In this case will be constant for the whole simulation
 
     # convert the durations to number of time steps
     steps = int(sim_length_s / sim_step_s)
@@ -58,31 +64,31 @@ def run_localization_sim(
                 cmd_vel = np.array([1.0, -0.01])
             else:
                 cmd_vel = np.array([1.10, 0.03])
-        
-        if np.any(cmd_vel == 0.):
+
+        if np.any(cmd_vel == 0.0):
             cmd_vel += 1e-9
 
         # Simulate robot motion for sim_step_s seconds using the Motion Model.
         # the sampling motion model already include Gaussian noise on the command
-        sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, sigma_u, sim_step_s) 
+        sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, sigma_u, sim_step_s)
         track.append(sim_pos)
 
         # to simulate the error in the odometry reading, we take another Gaussian sample of the velocity command
-        #noisy_vel = cmd_vel + sigma_u * sim_noise_generator.normal(size=cmd_vel.shape)
+        # noisy_vel = cmd_vel + sigma_u * sim_noise_generator.normal(size=cmd_vel.shape)
         odom_pos = sample_velocity_motion_model(odom_pos, cmd_vel, sigma_u, sim_step_s)
         track_odom.append(odom_pos)
 
         if i % ekf_step == 0 and i != 0:  # only update ekf at dt intervals
             # run the prediction step of the EKF
-            if motion_model == 'velocity':
+            if motion_model == "velocity":
                 ekf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(ekf_dt,))
-            elif motion_model == 'odometry':
+            elif motion_model == "odometry":
                 u = get_odometry_command(odom_pos, odom_pos_prev)
                 ekf.predict(u=u, sigma_u=sigma_u_odom)
                 odom_pos_prev = odom_pos.copy()
 
             # plot the prior covariance ellipses every ellipse_step_s seconds
-            if i % ellipse_step == 0:  
+            if i % ellipse_step == 0:
                 pri_ellipse = plot_covariance(
                     (ekf.mu[0], ekf.mu[1]),
                     ekf.Sigma[0:2, 0:2],
@@ -94,20 +100,27 @@ def run_localization_sim(
                 )
 
             # for each landmark simulate the measurement of the landmark
-            for lmark in landmarks:  
-                z = z_landm_sensor(sim_pos, lmark, sigma_z, max_range=max_range, fov=fov)  # landmarks out of the sensor's FOV will be not detected
+            for lmark in landmarks:
+                z = z_landm_sensor(
+                    sim_pos, lmark, sigma_z, max_range=max_range, fov=fov
+                )  # landmarks out of the sensor's FOV will be not detected
 
                 # if any landmark detected by the sensor, update the EKF
                 if z is not None:
                     # run the correction step of the EKF
-                    ekf.update(z, eval_hx=eval_hx_landm, eval_Ht=eval_Ht_landm, Qt=Q_landm, 
-                               Ht_args=(*ekf.mu, *lmark), # the Ht function requires a flattened array of parameters
-                               hx_args=(ekf.mu, lmark, sigma_z),
-                               residual=residual, 
-                               angle_idx=-1)
+                    ekf.update(
+                        z,
+                        eval_hx=eval_hx_landm,
+                        eval_Ht=eval_Ht_landm,
+                        Qt=Q_landm,
+                        Ht_args=(*ekf.mu, *lmark),  # the Ht function requires a flattened array of parameters
+                        hx_args=(ekf.mu, lmark, sigma_z),
+                        residual=residual,
+                        angle_idx=-1,
+                    )
 
             # plot the posterior covariance ellipses every ellipse_step_s seconds
-            if i % ellipse_step == 0:  
+            if i % ellipse_step == 0:
                 post_ellipse = plot_covariance(
                     (ekf.mu[0], ekf.mu[1]),
                     ekf.Sigma[0:2, 0:2],
@@ -118,12 +131,12 @@ def run_localization_sim(
                     ax=ax[0],
                 )
             track_ekf.append(ekf.mu.copy())
-    
+
     # draw plots
     track = np.array(track)
     track_odom = np.array(track_odom)
     track_ekf = np.array(track_ekf)
-    
+
     # trajectory plots
     (track_legend,) = ax[0].plot(track[:, 0], track[:, 1], label="Real robot path")
     (track_odom_legend,) = ax[0].plot(track_odom[:, 0], track_odom[:, 1], "--", label="Odometry path")
@@ -132,15 +145,15 @@ def run_localization_sim(
     ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend, pri_ellipse, post_ellipse])
 
     # error plots
-    ekf_err, =  ax[1].plot(
-        np.arange(0, sim_length_s, ekf_dt), 
-        np.linalg.norm(track[::ekf_step, :2] - track_ekf[:, :2], axis=1), 
-        '-o',
+    (ekf_err,) = ax[1].plot(
+        np.arange(0, sim_length_s, ekf_dt),
+        np.linalg.norm(track[::ekf_step, :2] - track_ekf[:, :2], axis=1),
+        "-o",
         label="EKF error",
     )
-    odom_err, = ax[1].plot(
-        np.arange(0, sim_length_s, sim_step_s), 
-        np.linalg.norm(track[:, :2] - track_odom[:, :2], axis=1), 
+    (odom_err,) = ax[1].plot(
+        np.arange(0, sim_length_s, sim_step_s),
+        np.linalg.norm(track[:, :2] - track_odom[:, :2], axis=1),
         label="Odometry error",
     )
     ax[1].legend(handles=[ekf_err, odom_err])
@@ -155,19 +168,17 @@ def run_localization_sim(
 def main():
 
     ##### Define Parameters #####
-    
+
     seed = 42  # because it is the answer to the Ultimate Question of Life, The Universe and Everything :)
-    np.random.seed(seed)  
+    np.random.seed(seed)
 
     # landmarks list in map's coordinate
-    landmarks = np.array([[5, 12], [10.5, 7.5], 
-                          [16.5, 15], [10, 14], 
-                          [5,6], [14.5, 11.5],
-                          [14, 9], [8, 15.5],
-                          [13.5, 17], [18.4, 18]]) 
+    landmarks = np.array(
+        [[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
+    )
     # sensor params
     max_range = 8.0
-    fov = math.pi/3
+    fov = math.pi / 3
 
     # sim params
     ekf_dt = 1.0  # time interval between measurements [s]
@@ -176,7 +187,7 @@ def main():
     # Probabilistic models parameters
     dim_x = 3
     # First, choose the Motion Model
-    motion_model = 'velocity' # 'odometry' or 'velocity'
+    motion_model = "velocity"  # 'odometry' or 'velocity'
 
     # general noise parameters
     std_lin_vel = 0.1  # [m/s]
@@ -185,14 +196,14 @@ def main():
     sigma_u_odom = 0
 
     # Velocity motion model params
-    if motion_model == 'velocity':
+    if motion_model == "velocity":
         dim_u = 2
         Mt = np.diag([std_lin_vel**2, std_ang_vel**2])
         eval_gux = sample_velocity_motion_model
         _, eval_Gt, eval_Vt = velocity_mm_simpy()
-    
+
     # odometry motion model params
-    elif motion_model == 'odometry':
+    elif motion_model == "odometry":
         dim_u = 3
         std_rot1 = np.deg2rad(1.0)
         std_transl = 0.05
@@ -201,7 +212,7 @@ def main():
         Mt = np.diag([std_rot1**2, std_transl**2, std_rot2**2])
         eval_gux = sample_odometry_motion_model
         _, eval_Gt, eval_Vt = odometry_mm_simpy()
-    
+
     # Define noise params and Q for landmark sensor model
     std_range = 0.1  # [m]
     std_bearing = np.deg2rad(1.0)  # [rad]
@@ -211,36 +222,31 @@ def main():
     _, eval_Ht = landmark_sm_simpy()
 
     # Initialize the EKF
-    ekf = RobotEKF(
-        dim_x = dim_x,
-        dim_u = dim_u,
-        eval_gux = eval_gux,
-        eval_Gt = eval_Gt,
-        eval_Vt = eval_Vt
-    )
+    ekf = RobotEKF(dim_x=dim_x, dim_u=dim_u, eval_gux=eval_gux, eval_Gt=eval_Gt, eval_Vt=eval_Vt)
     ekf.mu = np.array([1, 6, 0.3])  # x, y, theta
     ekf.Sigma = np.diag([0.1, 0.1, 0.1])
     ekf.Mt = Mt
 
     run_localization_sim(
         ekf,
-        ekf_dt = ekf_dt,
-        landmarks = landmarks,
-        z_landm_sensor = landmark_range_bearing_sensor,
-        max_range = max_range,
-        fov = fov,
-        eval_hx_landm = landmark_range_bearing_model,
-        eval_Ht_landm = eval_Ht, 
-        Q_landm = Q_landm,
-        sigma_u = sigma_u,
-        sigma_z = sigma_z,
-        motion_model = motion_model,
-        sigma_u_odom = sigma_u_odom,
-        ellipse_step_s = 2.0,
-        sim_length_s = sim_length_s,
+        ekf_dt=ekf_dt,
+        landmarks=landmarks,
+        z_landm_sensor=landmark_range_bearing_sensor,
+        max_range=max_range,
+        fov=fov,
+        eval_hx_landm=landmark_range_bearing_model,
+        eval_Ht_landm=eval_Ht,
+        Q_landm=Q_landm,
+        sigma_u=sigma_u,
+        sigma_z=sigma_z,
+        motion_model=motion_model,
+        sigma_u_odom=sigma_u_odom,
+        ellipse_step_s=2.0,
+        sim_length_s=sim_length_s,
     )
 
     plt.close("all")
+
 
 if __name__ == "__main__":
     main()

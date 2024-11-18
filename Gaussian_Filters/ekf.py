@@ -76,6 +76,8 @@ class RobotEKF:
         # Convert the measurement to a vector if necessary. Needed for the residual computation
         if np.isscalar(z):
             z = np.asarray([z], float)
+            Qt = np.atleast_2d(Qt).astype(float)
+            Ht = np.atleast_2d(Ht).astype(float)
 
         # Compute the Kalman gain, you need to evaluate the Jacobian Ht
         Ht = eval_Ht(*Ht_args)
@@ -85,6 +87,8 @@ class RobotEKF:
 
         # Evaluate the expected measurement and compute the residual, then update the state prediction
         z_hat = eval_hx(*hx_args)
+        if np.isscalar(z_hat):
+            z_hat = np.asarray([z_hat], float)
 
         # if the z measurement include an angle update, we need to specify the positional index to normalize the residual
         y = residual(z, z_hat, **kwargs)
