@@ -9,7 +9,6 @@ class RobotPF:
             dim_u=1,
             eval_gux=None,
             resampling_fn=None,
-            initial_dist=np.random.uniform,
             boundaries=[(.0, 20.), (.0, 20.), (-np.pi, np.pi)],
             N=1000,
     ):
@@ -84,8 +83,6 @@ class RobotPF:
             self.particles: the state prediction
         """
         # Update the state prediction evaluating the motion model
-        #for i in range(self.N):
-            #self.particles[i, :] = self.eval_gux(self.particles[i, :], u, sigma_u, *g_extra_args)
         self.particles = self.eval_gux(self.particles, u, sigma_u, *g_extra_args)
 
 
@@ -118,21 +115,10 @@ class RobotPF:
         sigma_z = sigma_z * 3.0
         # Evaluate the expected measurement and compute the residual, then update the state prediction
         z_hat = np.zeros((self.N, 2))
-        # for i in range(self.N):
-        #     z_hat = eval_hx(self.particles[i,:], *hx_args)
-        #     # simplification assumes variance is invariant to world projection
-        #     prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
-        #     # if np.any(prob != 0.0):
-        #     #     print(f"z: {z}, z_hat: {z_hat} ", "prob: ", prob, np.prod(prob))
-        #     # print(f"z: {z[k]}, z_hat: {z_hat[k]}, prob: {prob}")
-        #     self.weights[i] *= np.prod(prob)
 
         z_hat = eval_hx(self.particles, *hx_args)
         # simplification assumes variance is invariant to world projection
         prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
-        # if np.any(prob != 0.0):
-        #     print(f"z: {z}, z_hat: {z_hat} ", "prob: ", prob, np.prod(prob))
-        # print(f"z: {z[k]}, z_hat: {z_hat[k]}, prob: {prob}")
         self.weights *= np.prod(prob, axis=1)
 
 

@@ -1,8 +1,15 @@
 import math
 import numpy as np
 
-from utils import residual, state_mean, simple_resample, stratified_resample, systematic_resample, residual_resample
-from plot_utils import plot_initial_particles, plot_particles
+from utils import (
+    residual, 
+    initial_uniform_particles_gridmap, initial_uniform_particles_gridmap_from_free_spaces,
+    state_mean, 
+    simple_resample, stratified_resample, systematic_resample, residual_resample,
+    get_map, compute_map_occ,
+)
+
+from plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap, plot_gridmap
 import matplotlib.pyplot as plt
 from pf import RobotPF
 
@@ -19,6 +26,7 @@ def run_localization_sim(
     pf: RobotPF,
     pf_dt,
     landmarks,
+    map,
     max_range,
     fov,
     z_landm_sensor,
@@ -36,7 +44,7 @@ def run_localization_sim(
     odom_pos = pf.mu.copy()  # odometry position, copy the initial position set inside the PF
 
     cmd_vel = np.array(
-        [0.8, 0.03]
+        [0.8, 0.05]
     )  # velocity command (v, omega). In this case will be constant for the whole simulation
 
     # convert the durations to number of time steps
@@ -46,7 +54,9 @@ def run_localization_sim(
 
     # Initialize a plot and insert the landmarks
     fig, ax = plt.subplots(1, 2, figsize=(9, 4))
-    lmarks_legend = ax[0].scatter(landmarks[:, 0], landmarks[:, 1], marker="s", s=60, label="Landmarks")
+    plot_gridmap(map, ax=ax[0])
+    # fig_particles, ax_particles = plt.subplots(1, 1, figsize=(6, 6))
+    lmarks_legend = ax[0].scatter(landmarks[:, 1], map.shape[0]-landmarks[:, 0], marker="s", s=60, label="Landmarks")
 
     track = []  # list to store all the robot positions
     track_odom = []  # list to store all the odometry positions
@@ -55,12 +65,14 @@ def run_localization_sim(
     odom_pos_prev = odom_pos.copy()
 
     # plot initial distribution of particles
-    init_particles_lgnd = plot_initial_particles(pf.N, pf.particles, ax=ax[0])
+    initial_particles_legend = plot_initial_particles_gridmap(pf.N, pf.particles, map_shape=map.shape, ax=ax[0])
 
     # The main loop that runs the simulation
     for i in range(steps):
         if np.any(cmd_vel == 0.0):
             cmd_vel += 1e-9
+        elif i > steps/2:
+            cmd_vel = np.array([0.65, -0.03])
         # Simulate robot motion for sim_step_s seconds using the Motion Model.
         # the sampling motion model already include Gaussian noise on the command
         sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, sigma_u, sim_step_s)
@@ -110,7 +122,7 @@ def run_localization_sim(
 
             # plot the posterior particles every particles_plot_step seconds
             if i % particles_plot_step == 0:
-                legend_PF1, legend_PF2 = plot_particles(pf.particles, sim_pos, pf.mu, ax=ax[0])
+                legend_PF1, legend_PF2 = plot_particles_gridmap(pf.particles, sim_pos, pf.mu, map.shape, ax=ax[0])
             track_pf.append(pf.mu.copy())
 
             #print("Step: ", i, " - NEFF: ", neff)
@@ -121,11 +133,11 @@ def run_localization_sim(
     track_pf = np.array(track_pf)
 
     # trajectory plots
-    (track_legend,) = ax[0].plot(track[:, 0], track[:, 1], label="True robot path")
-    (track_odom_legend,) = ax[0].plot(track_odom[:, 0], track_odom[:, 1], "--", label="Odometry path")
+    (track_legend,) = ax[0].plot(track[:, 1], map.shape[0]*np.ones_like(track[:,0])-track[:, 0], label="Real robot path")
+    (track_odom_legend,) = ax[0].plot(track_odom[:, 1], map.shape[0]*np.ones_like(track_odom[:,0])-track_odom[:, 0], "--", label="Odometry path")
     ax[0].axis("equal")
-    ax[0].set_title("PF Robot localization")
-    ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend, legend_PF1, legend_PF2, init_particles_lgnd])
+    ax[0].set_title("PF Robot localization Gridmap")
+    ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend, legend_PF1, legend_PF2, initial_particles_legend])
 
     # error plots
     (pf_err,) = ax[1].plot(
@@ -157,7 +169,9 @@ def main():
 
     # landmarks list in map's coordinate
     landmarks = np.array(
-        [[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
+        #[[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
+        [[10.5, 12.5], [10.5,13.5], [19.5, 7.5], [19.5,8.5], [19.5,9.5], [18.5,9.5], [10.5,16.5], [11.5,16.5], [12.5,16.5], [16.5,16.5],
+          [17.5, 16.5], [9.5,7.5], [11.5,4.5], [15.5,2.5], [0.5,12.5], [0.5,16.5]]
     )
     # sensor params
     max_range = 8.0
@@ -165,7 +179,7 @@ def main():
 
     # sim params
     pf_dt = 1.0  # time interval between measurements [s]
-    sim_length_s = 22  # length of the simulation [s]
+    sim_length_s = 28  # length of the simulation [s]
 
     # Probabilistic models parameters
     dim_x = 3
@@ -173,8 +187,8 @@ def main():
     motion_model = "velocity"  # 'odometry' or 'velocity'
 
     # general noise parameters
-    std_lin_vel = 0.1  # [m/s]
-    std_ang_vel = np.deg2rad(1.0)  # [rad/s]
+    std_lin_vel = 0.15  # [m/s]
+    std_ang_vel = np.deg2rad(2.0)  # [rad/s]
     sigma_u = np.array([std_lin_vel, std_ang_vel])
     sigma_u_odom = 0
 
@@ -197,24 +211,44 @@ def main():
     std_bearing = np.deg2rad(1.0)  # [rad]
     sigma_z = np.array([std_range, std_bearing])
 
+    # Define gridmap
+    map_path = '2D_maps/map3.png'
+
+    xy_reso = 3
+    _, grid_map = get_map(map_path, xy_reso)
+    # print(grid_map)
+    max_x = grid_map.shape[0]
+    max_y = grid_map.shape[1]
+    occ_spaces, free_spaces, _ = compute_map_occ(grid_map)
+
     # Initialize the PF
     pf = RobotPF(
         dim_x=dim_x,
         dim_u=dim_u,
         eval_gux=eval_gux,
-        resampling_fn=simple_resample,
-        boundaries=[(0.0, 20.0), (0.0, 20.0), (-np.pi, np.pi)],
+        resampling_fn=systematic_resample,
+        boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
         N=1000,
     )
 
-    pf.mu = np.array([1, 6, 0.3])  # x, y, theta
-    pf.Sigma = np.diag([0.1, 0.1, 0.1])
-    pf.initialize_particles()
+    pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
+    pf.Sigma = np.diag([0.1, 0.1, 0.1])   # initial covariance matrix
+    
+    # initialize particles using the gridmap using the free spaces list
+    # method 1: use map pre-computed index list of free spaces
+    pf.initialize_particles(
+        initial_dist_fn=initial_uniform_particles_gridmap_from_free_spaces, 
+        initial_dist_args=(pf.dim_x, free_spaces))
+    # method 2: use rejection sampling
+    # pf.initialize_particles(
+    #     initial_dist_fn=initial_uniform_particles_gridmap, 
+    #     initial_dist_args=(pf.dim_x, pf.boundaries, grid_map))
 
     run_localization_sim(
         pf,
         pf_dt=pf_dt,
         landmarks=landmarks,
+        map=grid_map,
         z_landm_sensor=landmark_range_bearing_sensor,
         max_range=max_range,
         fov=fov,
