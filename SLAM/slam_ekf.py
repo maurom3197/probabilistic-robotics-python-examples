@@ -19,7 +19,7 @@ class SLAM_EKF(ExtendedKalmanFilter):
         Parameters
         ----------
         dim_x : int
-            Same as in the parent class
+            Dimension of the state vector, without considering the landmarks
 
         dim_z : int
             Same as in the parent class
