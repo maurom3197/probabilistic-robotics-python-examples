@@ -3,7 +3,7 @@ import numpy as np
 
 from utils import (
     residual, 
-    initial_uniform_particles_gridmap, initial_uniform_particles_gridmap_from_free_spaces,
+    initial_uniform_particles_gridmap, initial_uniform_particles_gridmap_from_free_spaces, initial_gaussian_particles,
     state_mean, 
     simple_resample, stratified_resample, systematic_resample, residual_resample,
     get_map, compute_map_occ,
@@ -125,7 +125,7 @@ def run_localization_sim(
                 legend_PF1, legend_PF2 = plot_particles_gridmap(pf.particles, sim_pos, pf.mu, map.shape, ax=ax[0])
             track_pf.append(pf.mu.copy())
 
-            #print("Step: ", i, " - NEFF: ", neff)
+            print("Step: ", i, " - NEFF: ", neff)
 
     # draw plots
     track = np.array(track)
@@ -219,16 +219,16 @@ def main():
     # print(grid_map)
     max_x = grid_map.shape[0]
     max_y = grid_map.shape[1]
-    occ_spaces, free_spaces, _ = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, map_cells = compute_map_occ(grid_map)
 
     # Initialize the PF
     pf = RobotPF(
         dim_x=dim_x,
         dim_u=dim_u,
         eval_gux=eval_gux,
-        resampling_fn=systematic_resample,
+        resampling_fn=stratified_resample,
         boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
-        N=1000,
+        N=500,
     )
 
     pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
@@ -243,6 +243,10 @@ def main():
     # pf.initialize_particles(
     #     initial_dist_fn=initial_uniform_particles_gridmap, 
     #     initial_dist_args=(pf.dim_x, pf.boundaries, grid_map))
+    # method 3: with apriori information on the initial robot pose use a gaussian
+    # pf.initialize_particles(
+    #     initial_dist_fn=initial_gaussian_particles, 
+    #     initial_dist_args=(pf.dim_x, pf.mu, [3.0, 3.0, math.pi/2], 2, grid_map))
 
     run_localization_sim(
         pf,

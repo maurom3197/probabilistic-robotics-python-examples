@@ -2,6 +2,7 @@ import numpy as np
 from math import atan2
 from PIL import Image
 import skimage
+from plot_utils import plot_gridmap
 
 def residual(a, b, **kwargs):
     """
@@ -25,22 +26,15 @@ def normalize_angle(theta):
     Normalize angles between [-pi, pi)
     """
     theta = theta % (2 * np.pi)  # force in range [0, 2 pi)
-    if theta > np.pi:  # move to [-pi, pi)
-        theta -= 2 * np.pi
+    if np.isscalar(theta):
+        if theta > np.pi:  # move to [-pi, pi)
+            theta -= 2 * np.pi
+    else:
+        theta_ = theta.copy()
+        theta_[theta>np.pi] -= 2 * np.pi
+        return theta_
     
     return theta
-
-def initial_gaussian_particles(N, dim_x, init_pose, std, angle_idx=None):
-    """
-    Initialize particles in case of known initial pose: use a Gaussian distribution
-    """
-    particles = np.empty((N, dim_x))
-    for i in range(dim_x):
-        particles[:, i] = np.random.normal(init_pose[i], std[i], N)
-
-    if angle_idx is not None:
-        particles[:, angle_idx] = normalize_angle(particles[:, angle_idx])
-    return particles
 
 def initial_uniform_particles_gridmap(N, dim_x, boundaries, occ_grid):
     """
@@ -75,6 +69,33 @@ def initial_uniform_particles_gridmap_from_free_spaces(N, dim_x, free_spaces):
         particles[i, 0:2] = np.random.uniform(0.05, 0.95) + free_spaces[idx]
         particles[i, 2] = np.random.uniform(-np.pi, np.pi)
 
+    return particles
+
+def initial_gaussian_particles(N, dim_x, init_pose, std, angle_idx=None, map=None):
+    """
+    Initialize particles in case of known initial pose: use a Gaussian distribution
+    """
+    particles = np.zeros((N, dim_x))
+    particle = np.zeros((dim_x))  # particles
+    n_particles = 0 # number of valid particles
+
+    if map is None:
+        for i in range(dim_x):
+            particles[:, i] = np.random.normal(init_pose[i], std[i], N)
+    else:
+        while n_particles != (N-1):
+        
+            for i in range(dim_x):
+                particle[i] = np.random.normal(init_pose[i], std[i])
+            # check that sampled particles lie on free space on the grid map
+            xi, yi = int(particle[0]), int(particle[1])
+
+            if (xi>=0 and yi>=0 and xi<map.shape[0] and yi<map.shape[1] and map[xi, yi] == 0):
+                particles[n_particles] = particle
+                n_particles += 1 
+
+    if angle_idx is not None:
+        particles[:, angle_idx] = normalize_angle(particles[:, angle_idx])
     return particles
 
 def state_mean(particles, weights, **kwargs):
