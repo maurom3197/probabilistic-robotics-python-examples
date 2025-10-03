@@ -2,26 +2,14 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from gridmap_utils import get_map, plot_gridmap, compute_map_occ
-from ray_casting import cast_rays
-
-# Gaussian Function
-def gaussian(x, mean, sigma):
-    return (1 / np.sqrt(2 * np.pi * sigma ** 2)) * np.exp(- (x - mean) ** 2 / (2 * sigma ** 2))
-
-# Normalized Gaussian pdf
-def compute_p_hit(dist, max_dist, _sigma):
-    normalize_hit = 1e-9
-    for j in range(round(max_dist)):
-        normalize_hit += gaussian(j, 0., _sigma)
-    normalize_hit = 1. / normalize_hit
-
-    p_hit = gaussian(dist, 0., _sigma)*normalize_hit
-
-    return p_hit
+from Mapping.gridmap_utils import get_map, plot_gridmap_plt, compute_map_occ
+from Sensors_Models.ray_casting import cast_rays
+from Sensors_Models.utils import compute_p_hit
 
 def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
-
+    """""
+    Compute probability p(z|x) for each perceived range z
+    """""
     max_dist = max(dist)
     p_z = np.zeros((z.shape[0]))
     for k, z_k in enumerate(z):
@@ -42,7 +30,6 @@ def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     
     return p_z
 
-
 def find_endpoints(robot_pose, z, num_rays, fov):
     """""
     Check directly the presence of obstacles in Line of Sight in the FOV of the range sensor
@@ -51,7 +38,7 @@ def find_endpoints(robot_pose, z, num_rays, fov):
     robot_x, robot_y, robot_angle = robot_pose[:]
 
     # define left most angle of FOV and step angle
-    start_angle = robot_angle + fov/2
+    start_angle = robot_angle - fov/2
     step_angle = fov/num_rays
     
     end_points = np.zeros((num_rays, 2))
@@ -59,19 +46,21 @@ def find_endpoints(robot_pose, z, num_rays, fov):
     # loop over casted rays
     for i in range(num_rays):
         # get ray target coordinates
-        target_x = robot_x - math.sin(start_angle) * z[i]
-        target_y = robot_y + math.cos(start_angle) * z[i]
+        target_x = robot_x + math.cos(start_angle) * z[i]
+        target_y = robot_y + math.sin(start_angle) * z[i]
         
         end_points[i, :] = target_x, target_y
     
         # increment angle by a single step
-        start_angle -= step_angle
+        start_angle += step_angle
 
     return end_points
 
 
 def compute_distances(end_points, obst):
-
+    """""
+    Compute the distance to the nearest obstacle in the map for a given endpoint (x,y)
+    """""
     distances = np.zeros((end_points.shape[0]))
     for k, ep in enumerate(end_points):
         # convert target X, Y coordinate to map col, row
@@ -105,12 +94,14 @@ def plot_likelihood_fields(p_gridmap, robot_pose=None):
         # unpack the first point
         x, y = robot_pose[0], robot_pose[1]
         # find the end point
-        endx = x - 1.5 * math.sin(robot_pose[2])
-        endy = y + 1.5 * math.cos(robot_pose[2])
+        endx = x - 1.5 * math.sin(robot_pose[2]-math.pi/2)
+        endy = y + 1.5 * math.cos(robot_pose[2]-math.pi/2)
 
         plt.plot(robot_pose[1], robot_pose[0], 'or', ms=10)
         plt.plot([y, endy], [x, endx], linewidth = '2', color='r')
 
+    plt.colorbar()
+    plt.savefig("likelihood_field.png")
 
 def plot_ray_prob(map_size, end_points, robot_pose, p_z):
     robot_x, robot_y, _ = robot_pose
@@ -126,41 +117,51 @@ def plot_ray_prob(map_size, end_points, robot_pose, p_z):
     x = map_size[0]*np.ones_like(end_points[:,0]) - x
     col = p_z
     # draw endpoint with probability from Likelihood Fields
-    plt.scatter(y, x, s=50, c=col, cmap='gray')
+    plt.scatter(y, x, s=50, c=col, cmap='viridis')
     plt.colorbar()
+    plt.savefig("ray_prob_likelihood_field.png")
 
     
 def main():
     # global constants
-    map_path = '../2D_maps/map3.png'
+    map_path = '2D_maps/map31.bmp'
 
     xy_reso = 4
     _, grid_map = get_map(map_path, xy_reso)
     # print(grid_map)
-    obst_arr, occ_state = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
     
     fov = math.pi / 4
-    num_rays = 32
+    num_rays = 12
 
     robot_pose = np.array([12, 9, 2*math.pi/3])
-    z_max = 10.0
+    z_max = 8.0
 
     ###########################################################
     #### simulate Laser range with ray casting + some noise ###
     ###########################################################
     
     _, rng = cast_rays(grid_map, robot_pose, num_rays, fov, z_max)
-    #simulate laser measurement adding noise to the obtained by casting rays in the map
+    # print("Simulated laser ranges (no noise):", rng)
+    # print("Perceived obstacles end points:", end_points_z)
+
+    # simulate laser measurement adding noise to the obtained by casting rays in the map
     z = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
     z = np.clip(z, 0., z_max)
     end_points_z = find_endpoints(robot_pose, z, num_rays, fov)
-    distances_z = compute_distances(end_points_z, obst_arr)
+    # print("Noisy laser ranges:", z)
+    # print("Noisy end_points_z:", end_points_z)
+
+    # compute distances of the perceived end points to the nearest obstacle in the map
+    distances_z = compute_distances(end_points_z, occ_spaces)
+    # print("Distances to nearest obstacles:", distances_z)
+
+    # Evaluate the likelihood field model
     mix_density, sigma = [0.9, 0.05, 0.05], 0.75
     p_z_z = evaluate_prob(distances_z, z, z_max, mix_density, sigma)
-    # print computed probabilities on the laser measurements
-    print(p_z_z)
+    print("Probabilities of the laser ranges:", p_z_z)
 
-    plot_gridmap(grid_map, 'Grid Map - endpoints prob with LF', robot_pose)
+    plot_gridmap_plt(grid_map, 'Grid Map - endpoints prob with LF', robot_pose)
     plot_ray_prob(grid_map.shape, end_points_z, robot_pose, p_z_z)
     plt.show()
 
@@ -168,14 +169,15 @@ def main():
     #### pre-compute likelihood fields on the entire map ######
     ###########################################################
 
-    distances = compute_distances(occ_state, obst_arr)
+    distances = compute_distances(map_spaces, occ_spaces)
 
     max_dist = max(distances)
-    p_z = np.zeros((occ_state.shape[0]))
-    for i, ep in enumerate(occ_state):
+    p_z = np.zeros((map_spaces.shape[0]))
+    for i, ep in enumerate(map_spaces):
         p_zi = compute_p_hit(distances[i], max_dist, sigma)
         p_z[i] = p_zi
     
+    print()
     p_gridmap = np.reshape(p_z, grid_map.shape)
 
     plot_likelihood_fields(p_gridmap, robot_pose=robot_pose)

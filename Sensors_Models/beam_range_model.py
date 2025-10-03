@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from generate_beam_data import plot_sampling_dist, sample_from_z_dist
-
-# Gaussian Function
-def gaussian(x, mean, sigma):
-    return (1 / np.sqrt(2 * np.pi * sigma ** 2)) * np.exp(- (x - mean) ** 2 / (2 * sigma ** 2))
+from Sensors_Models.generate_beam_data import plot_sampling_dist, sample_from_z_dist
+from Sensors_Models.utils import gaussian
 
 def evaluate_range_beam_distribution(z, z_star, z_max, _mix_density, _sigma, _lamb_short):
     # Calculate hit mode probability
@@ -36,13 +33,13 @@ def evaluate_range_beam_distribution(z, z_star, z_max, _mix_density, _sigma, _la
 
     return p_hit, p_short, p_max, p_rand, p, p_z
 
-def ML_params_estimator(inputData, sensor_max, data_num):
+def ML_params_estimator(input_data, sensor_max, data_num):
     """
     Expectation Maximation (EM) algorithm to estimate the set of parameters theta of the beam range sensor model
 
     Load sensor data:
-    inputData[0,:] - z distance from ray casting
-    inputData[1,:] - laser range z
+    input_data[0,:] - z distance from ray casting
+    input_data[1,:] - laser range z
     """
 
     # Initial guesses for intrinsic parameter
@@ -76,8 +73,8 @@ def ML_params_estimator(inputData, sensor_max, data_num):
         _cal_sigma_tmp_sum = 0.0
 
         for i in range(data_num):
-            z_star = inputData[0, i]  # true range from ray casting (in pseudo code : z_i^*)
-            z = inputData[1, i]  # measurement (in pseudo code : z_i)
+            z_star = input_data[0, i]  # true range from ray casting (in pseudo code : z_i^*)
+            z = input_data[1, i]  # measurement (in pseudo code : z_i)
 
             p_hit, p_short, p_max, p_rand, p, p_z = evaluate_range_beam_distribution(z, z_star, 
                                                                                      sensor_max, _mix_density, 
@@ -106,7 +103,7 @@ def ML_params_estimator(inputData, sensor_max, data_num):
         z_rand = e_rand_sum / float(data_num)
         _mix_density = [z_hit, z_short, z_max, z_rand]
         _sigma = (_cal_sigma_tmp_sum / e_hit_sum) ** (1 / 2)
-        _lamb_short = np.float_(e_short_sum / (np.matmul(e_short_list.reshape(1, -1), inputData[1, :])))
+        _lamb_short = np.float_(e_short_sum / (np.matmul(e_short_list.reshape(1, -1), input_data[1, :])))
 
         # Current value
         cur = np.array([z_hit, z_short, z_max, z_rand, _sigma, _lamb_short], dtype=float)
@@ -131,19 +128,19 @@ def ML_params_estimator(inputData, sensor_max, data_num):
 
 def main():
     # choose input range data
-    inputData = np.load('beam_range_data.npz')['D'] # more realistic
-    #inputData = np.load('noisy_beam_range_data.npz')['D'] # more noisy
+    input_data = np.load('beam_range_data.npz')['D'] # noisy data
+    #input_data = np.load('pz_beam_range_data.npz')['D'] # sample from the beam range model
 
     z_max = 8.0  # Sensor max range
     data_num = 5000
 
-    theta = ML_params_estimator(inputData, z_max, data_num)
+    theta = ML_params_estimator(input_data, z_max, data_num)
     np.savez('theta_ML.npz', D=theta)
     EM_samples = np.zeros((data_num))
 
     # use the beam range model distribution to sample
     for i in range(5000):
-        z_star = inputData[0, i]
+        z_star = input_data[0, i]
         z = sample_from_z_dist(z_star, z_max=z_max, mix_density=theta[:-2], sigma=theta[-2], lamb_short=theta[-1])
         EM_samples[i] = z
 
