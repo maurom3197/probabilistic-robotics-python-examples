@@ -32,7 +32,7 @@ def sample_velocity_motion_model(x, u, a, dt):
     """ Sample velocity motion model.
     Arguments:
     x -- pose of the robot before moving [x, y, theta]
-    u -- velocity reading obtained from the robot [u, w]
+    u -- velocity reading obtained from the robot [v, w]
     a -- noise parameters of the motion model [a1, a2, a3, a4, a5, a6]
     dt -- time interval of prediction
     """

@@ -2,7 +2,7 @@ import numpy as np
 from math import atan2
 from PIL import Image
 import skimage
-from plot_utils import plot_gridmap
+from Discrete_Filters.plot_utils import plot_gridmap
 
 def residual(a, b, **kwargs):
     """

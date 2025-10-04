@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Mapping.gridmap_utils import get_map, plot_gridmap
-from Sensors_Models.utils import evaluate_range_beam_dist_array
+from Sensors_Models.utils import evaluate_range_beam_dist_array as sensor_model
 from Sensors_Models.ray_casting import cast_rays
 from Mapping.hill_climbing import hill_climb_binary, objective_MAP_occupancy_grid_mapping_hill_climb
 
@@ -30,9 +30,11 @@ def algorithm_MAP_occupancy_grid_mapping(map, robot_poses, ranges, z_max, num_ra
         for j in range(map.shape[1]):
             # print(f"Processing cell ({i}, {j})")
             m_i_values = []
+
             for k in [0,1]: # k = 0 (free), k = 1 (occupied)
                 occ_map[i, j] = k
-                m_k = 0
+                total_log_likelihood = 0.0
+
                 for t in range(len(robot_poses)):
                     x_t = robot_poses[t]
                     z = ranges[t]
@@ -46,17 +48,17 @@ def algorithm_MAP_occupancy_grid_mapping(map, robot_poses, ranges, z_max, num_ra
                     if r > z_max or abs(phi) > fov / 2:
                         continue
 
-                    # find the k-th ray that contain the m_i
-                    k = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
-                    z_t_k = z[k]  # range measurement of the k-th ray
-                    z_star = z_star[k]  # expected range measurement of the k-th ray
+                    # the  ray interesects the cell m_i
+                    idx = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
+                    z_t_k = z[idx]  # range measurement of the k-th ray
+                    z_star = z_star[idx]  # expected range measurement of the k-th ray
 
                     # evaluate the measurement model p(z|x,m)
-                    p_hit, p_short, p_max, p_rand, p_z = evaluate_range_beam_dist_array(z_t_k, z_star, z_max, mix_density, sigma, lamb_short)
+                    p_hit, p_short, p_max, p_rand, p_z = sensor_model(z_t_k, z_star, z_max, mix_density, sigma, lamb_short)
                     # print(f"t={t}, z={z}, z*={z_star}, p_hit={p_hit}, p_short={p_short}, p_max={p_max}, p_rand={p_rand}, p_z={p_z}")
-                    m_k += np.log(p_z + 1e-9)
-                m_k += k * l0
-                m_i_values.append(m_k)
+                    total_log_likelihood += np.sum(np.log(p_z + 1e-9))
+                total_log_likelihood += k * l0
+                m_i_values.append(total_log_likelihood)
             
             m_i_values = np.array(m_i_values)
             # apply the MAP estimation
@@ -78,7 +80,7 @@ def main():
 
     # Range sensor parameters
     fov = math.pi # Sensor Field of View
-    num_rays = 30 # Number of rays
+    num_rays = 36 # Number of rays
     z_max = 10.0 # Max range
 
     # Solution method

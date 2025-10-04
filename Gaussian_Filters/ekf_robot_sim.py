@@ -1,18 +1,18 @@
 import math
 import numpy as np
 
-from utils import residual
-from plot_utils import plot_covariance
+from Gaussian_Filters.utils import residual
+from Gaussian_Filters.plot_utils import plot_covariance
 import matplotlib.pyplot as plt
-from ekf import RobotEKF
-from probabilistic_models import (
+from Gaussian_Filters.ekf import RobotEKF
+from Gaussian_Filters.probabilistic_models import (
     sample_velocity_motion_model,
     sample_odometry_motion_model,
     get_odometry_command,
     landmark_range_bearing_model,
     landmark_range_bearing_sensor,
 )
-from probabilistic_models import velocity_mm_simpy, odometry_mm_simpy, landmark_sm_simpy
+from Gaussian_Filters.probabilistic_models import velocity_mm_simpy, odometry_mm_simpy, landmark_sm_simpy
 
 
 def run_localization_sim(

@@ -1,14 +1,14 @@
 import math
 import numpy as np
 
-from utils import residual, state_mean, z_mean
-from plot_utils import plot_covariance
+from Gaussian_Filters.utils import residual, state_mean, z_mean
+from Gaussian_Filters.plot_utils import plot_covariance
 import matplotlib.pyplot as plt
-from ukf import RobotUKF, SigmaPoints
-from probabilistic_models import sample_velocity_motion_model, sample_odometry_motion_model, get_odometry_command
-from probabilistic_models import landmark_range_bearing_model, landmark_range_bearing_sensor
+from Gaussian_Filters.ukf import RobotUKF, SigmaPoints
+from Gaussian_Filters.probabilistic_models import sample_velocity_motion_model, sample_odometry_motion_model, get_odometry_command
+from Gaussian_Filters.probabilistic_models import landmark_range_bearing_model, landmark_range_bearing_sensor
 from scipy.linalg import cholesky, sqrtm
-from utils import nearestPD
+from Gaussian_Filters.utils import nearestPD
 
 
 def run_localization_sim(

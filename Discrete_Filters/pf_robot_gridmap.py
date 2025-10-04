@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-from utils import (
+from Discrete_Filters.utils import (
     residual, 
     initial_uniform_particles_gridmap, initial_uniform_particles_gridmap_from_free_spaces, initial_gaussian_particles,
     state_mean, 
@@ -9,11 +9,11 @@ from utils import (
     get_map, compute_map_occ,
 )
 
-from plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap, plot_gridmap
+from Discrete_Filters.plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap, plot_gridmap
 import matplotlib.pyplot as plt
-from pf import RobotPF
+from Discrete_Filters.pf import RobotPF
 
-from probabilistic_models import (
+from Discrete_Filters.probabilistic_models import (
     sample_velocity_motion_model,
     sample_odometry_motion_model,
     get_odometry_command,

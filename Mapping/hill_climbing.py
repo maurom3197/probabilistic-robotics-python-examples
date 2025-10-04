@@ -1,5 +1,5 @@
 import numpy as np
-from Sensors_Models.utils import evaluate_range_beam_dist_array
+from Sensors_Models.utils import evaluate_range_beam_dist_array as sensor_model
 from Sensors_Models.ray_casting import cast_rays
 
 def hill_climb_binary(objective, n_bits=20, n_iterations=1000, objective_args=()):
@@ -78,7 +78,7 @@ def objective_MAP_occupancy_grid_mapping_hill_climb(occ_map_flat, robot_poses, r
         _, z_star = cast_rays(occ_map, pose, num_rays, fov, z_max)
 
         # evaluate the measurement model p(z|x,m)
-        p_hit, p_short, p_max, p_rand, p_z = evaluate_range_beam_distribution_array(z, z_star, z_max, mix_density, sigma, lamb_short)
+        p_hit, p_short, p_max, p_rand, p_z = sensor_model(z, z_star, z_max, mix_density, sigma, lamb_short)
         # print(f"t={t}, z={z}, z*={z_star}, p_hit={p_hit}, p_short={p_short}, p_max={p_max}, p_rand={p_rand}, p_z={p_z}")
         total_log_likelihood += np.log(p_z + 1e-6)
     # Add prior log-odds

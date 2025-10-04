@@ -1,12 +1,12 @@
 import math
 import numpy as np
 
-from utils import residual, state_mean, simple_resample, stratified_resample, systematic_resample, residual_resample
-from plot_utils import plot_initial_particles, plot_particles
+from Discrete_Filters.utils import residual, state_mean, simple_resample, stratified_resample, systematic_resample, residual_resample
+from Discrete_Filters.plot_utils import plot_initial_particles, plot_particles
 import matplotlib.pyplot as plt
-from pf import RobotPF
+from Discrete_Filters.pf import RobotPF
 
-from probabilistic_models import (
+from Discrete_Filters.probabilistic_models import (
     sample_velocity_motion_model,
     sample_odometry_motion_model,
     get_odometry_command,
