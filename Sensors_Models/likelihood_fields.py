@@ -2,13 +2,13 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap_plt, compute_map_occ
+from Mapping.gridmap_utils import get_map, plot_gridmap, compute_map_occ
 from Sensors_Models.ray_casting import cast_rays
 from Sensors_Models.utils import compute_p_hit
 
 def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     """""
-    Compute probability p(z|x) for each perceived range z
+    Compute probability p(z|x) according to the range laser model, mixture of densities
     """""
     max_dist = max(dist)
     p_z = np.zeros((z.shape[0]))
@@ -84,12 +84,17 @@ def compute_distances(end_points, obst):
 
     return distances
 
-def plot_likelihood_fields(p_gridmap, robot_pose=None):
-    plt.imshow(p_gridmap, cmap='gray')
-    plt.title('Likelihood fields', fontsize = 14)
-    plt.xticks(ticks=range(p_gridmap.shape[1]), labels=range(p_gridmap.shape[1]))
-    plt.yticks(ticks=range(p_gridmap.shape[0]), labels=range(p_gridmap.shape[0]))
-    
+def plot_likelihood_fields(p_gridmap, robot_pose=None, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    ax.imshow(p_gridmap, cmap='gray')
+    ax.set_xticks(ticks=range(p_gridmap.shape[1]), labels=range(p_gridmap.shape[1]))
+    ax.set_yticks(ticks=range(p_gridmap.shape[0]), labels=range(p_gridmap.shape[0]))
+    ax.set_aspect('equal')
+    ax.set_xlabel('Y [cells]', fontsize = 12)
+    ax.set_ylabel('X [cells]', fontsize = 12)
+
     if robot_pose is not None:
         # unpack the first point
         x, y = robot_pose[0], robot_pose[1]
@@ -97,29 +102,27 @@ def plot_likelihood_fields(p_gridmap, robot_pose=None):
         endx = x - 1.5 * math.sin(robot_pose[2]-math.pi/2)
         endy = y + 1.5 * math.cos(robot_pose[2]-math.pi/2)
 
-        plt.plot(robot_pose[1], robot_pose[0], 'or', ms=10)
-        plt.plot([y, endy], [x, endx], linewidth = '2', color='r')
+        ax.plot(robot_pose[1], robot_pose[0], 'or', ms=10)
+        ax.plot([y, endy], [x, endx], linewidth = '2', color='r')
 
-    plt.colorbar()
-    plt.savefig("likelihood_field.png")
+def plot_ray_prob(map_size, end_points, robot_pose, p_z, ax=None):
 
-def plot_ray_prob(map_size, end_points, robot_pose, p_z):
-    robot_x, robot_y, _ = robot_pose
+    if ax is None:
+        ax = plt.gca()
     
+    robot_x, robot_y, _ = robot_pose
     # draw casted ray
     for i in range(end_points.shape[0]):
         ep_x = end_points[i, 0]
         ep_y = end_points[i, 1]
-        plt.plot([robot_y, ep_y], [map_size[0]-robot_x,  map_size[0]-ep_x], linewidth = '0.8', color='b')
+        ax.plot([robot_y, ep_y], [map_size[0]-robot_x,  map_size[0]-ep_x], linewidth = '0.8', color='b')
 
     y = np.squeeze(end_points[:,1])
     x = np.squeeze(end_points[:,0])
     x = map_size[0]*np.ones_like(end_points[:,0]) - x
     col = p_z
     # draw endpoint with probability from Likelihood Fields
-    plt.scatter(y, x, s=50, c=col, cmap='viridis')
-    plt.colorbar()
-    plt.savefig("ray_prob_likelihood_field.png")
+    ax.scatter(y, x, s=50, c=col, cmap='viridis')
 
     
 def main():
@@ -141,16 +144,15 @@ def main():
     #### simulate Laser range with ray casting + some noise ###
     ###########################################################
     
-    _, rng = cast_rays(grid_map, robot_pose, num_rays, fov, z_max)
+    end_points_z, rng = cast_rays(grid_map, robot_pose, num_rays, fov, z_max)
     # print("Simulated laser ranges (no noise):", rng)
     # print("Perceived obstacles end points:", end_points_z)
-
     # simulate laser measurement adding noise to the obtained by casting rays in the map
     z = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
     z = np.clip(z, 0., z_max)
+    print("Noisy laser ranges:", z)
     end_points_z = find_endpoints(robot_pose, z, num_rays, fov)
-    # print("Noisy laser ranges:", z)
-    # print("Noisy end_points_z:", end_points_z)
+    print("Noisy end_points_z:", end_points_z)
 
     # compute distances of the perceived end points to the nearest obstacle in the map
     distances_z = compute_distances(end_points_z, occ_spaces)
@@ -161,8 +163,14 @@ def main():
     p_z_z = evaluate_prob(distances_z, z, z_max, mix_density, sigma)
     print("Probabilities of the laser ranges:", p_z_z)
 
-    plot_gridmap_plt(grid_map, 'Grid Map - endpoints prob with LF', robot_pose)
+    # visualize the results
+    fig, ax = plt.subplots()
+    plot_gridmap(grid_map, robot_pose, ax)
+    fig.suptitle('Probabilities of the laser ranges - LF', fontsize = 16)
     plot_ray_prob(grid_map.shape, end_points_z, robot_pose, p_z_z)
+    
+    fig.colorbar(plt.cm.ScalarMappable(cmap='viridis'), ax=ax, label='p(z|x)')
+    fig.savefig("ray_prob_likelihood_field.png")
     plt.show()
 
     ###########################################################
@@ -180,7 +188,11 @@ def main():
     print()
     p_gridmap = np.reshape(p_z, grid_map.shape)
 
-    plot_likelihood_fields(p_gridmap, robot_pose=robot_pose)
+    fig, ax = plt.subplots()
+    plot_likelihood_fields(p_gridmap, robot_pose=robot_pose, ax=ax)
+    fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
+    ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
+    fig.savefig("likelihood_field.png")
     plt.show()
 
     plt.close('all')

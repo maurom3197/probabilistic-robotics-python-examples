@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
 from PIL import Image
 import skimage
 
@@ -72,11 +71,12 @@ def plot_gridmap(map, robot_pose=None, ax=None):
     # cmap = colors.ListedColormap(['White', 'Gray','Black'])
     pc = ax.pcolor(map[::-1], cmap='Greys', edgecolors='k', linewidths=0.8)
 
-    if map.shape[0] < 30:
-        ax.set_xticks(ticks=range(0, map.shape[1]+1), labels=range(0, map.shape[1]+1, 1))
-        ax.set_yticks(ticks=range(map.shape[0]), labels=range(map.shape[0], 0, -1))
+    if map.shape[0] < 20:
+        ax.set_xticks(ticks=range(0, map.shape[1]+1), labels=range(0, map.shape[1]+1))
+        ax.set_yticks(ticks=range(0, map.shape[0]+1), labels=range(map.shape[0], -1, -1))
     else:
-        ax.axis('off')
+        ax.set_xticks(ticks=range(0, map.shape[1]+1, 2), labels=range(0, map.shape[1]+1, 2))
+        ax.set_yticks(ticks=range(0, map.shape[0]+1, 2), labels=range(map.shape[0], -1, -2))
 
     ax.set_aspect('equal')
 
@@ -93,27 +93,3 @@ def plot_gridmap(map, robot_pose=None, ax=None):
         ax.plot([y, endy], [map.shape[0]-x, map.shape[0]-endx], linewidth = '2', color='r')
     
     return pc
-
-
-def plot_gridmap_plt(map, title, robot_pose=None):
-    cmap = colors.ListedColormap(['White','Gray','Black'])
-    plt.figure(figsize=(6,6))
-    plt.pcolor(map[::-1],cmap=cmap, edgecolors='k', linewidths=1)
-
-    if map.shape[0] < 20:
-        plt.xticks(ticks=range(map.shape[1]+1), labels=range(map.shape[1]+1))
-        plt.yticks(ticks=range(map.shape[0]), labels=range(map.shape[0], 0, -1))
-    plt.axis('equal')
-    plt.title(title, fontsize = 14)
-
-    if robot_pose is not None:
-        # unpack the first point
-        x, y = robot_pose[0], robot_pose[1]
-        # print("Robot pose:", x, y, round(math.degrees(robot_pose[2]-math.pi/2)))
-
-        # find the end point
-        endx = x - 1.0 * math.sin(robot_pose[2]-math.pi/2)
-        endy = y + 1.0 * math.cos(robot_pose[2]-math.pi/2)
-
-        plt.plot(robot_pose[1], map.shape[0]-robot_pose[0], 'or', ms=10)
-        plt.plot([y, endy], [map.shape[0]-x, map.shape[0]-endx], linewidth = '2', color='r')

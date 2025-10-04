@@ -130,17 +130,20 @@ def bresenham_v0(x0, y0, x1, y1):
 def bresenham(x0, y0, x1, y1, map):
     """""
     x0, y0: coordinate of the starting point (robot position)
-    x1, y1: map coordinate of the obstacle end point
+    x1, y1: map coordinate of the max range point
+    map: 2D occupancy grid map
+    return: coordinate of the obstacle point or the map boundary point
     """""
 
-    dx =  abs(x1-x0)
-    sx = 1 if (x0<x1) else -1
-    dy = -abs(y1-y0)
-    sy = 1 if (y0<y1) else -1
-    err = dx+dy
+    dx =  abs(x1 - x0)
+    sx = 1 if (x0 < x1) else -1
+    dy = -abs(y1 - y0)
+    sy = 1 if (y0 < y1) else -1
+    err = dx + dy
 
     while (True):
-        # ray reach end of map
+        # check if obstacle encountered or ray reach end of map
+        print(x0, y0)
         if x0 < 0.:
             obst = 0, y0
             break
@@ -155,6 +158,7 @@ def bresenham(x0, y0, x1, y1, map):
             break
         elif map[round(x0), round(y0)]==1 or ((x0==x1) and (y0==y1)):
             obst = [x0, y0]
+            print("obst", obst)
             break
 
         e2 = 2*err

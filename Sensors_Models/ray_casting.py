@@ -2,7 +2,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap_plt
+from Mapping.gridmap_utils import get_map, plot_gridmap
 from Sensors_Models.utils import bresenham
 
 # ray-casting algorithm
@@ -81,10 +81,10 @@ def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
         # cast ray step by step
 
         # get ray target coordinates
-        target_x = int(robot_x + math.cos(start_angle) * z_max)
-        target_y = int(robot_y + math.sin(start_angle) * z_max)
+        target_x = int(round(robot_x + math.cos(start_angle) * z_max))
+        target_y = int(round(robot_y + math.sin(start_angle) * z_max))
 
-        target_x, target_y = bresenham(robot_x, robot_y, target_x, target_y, map)
+        target_x, target_y = bresenham(int(round(robot_x)), int(round(robot_y)), target_x, target_y, map)
         
         end_points[i, :] = target_x, target_y
         z_star[i] = math.dist([target_x, target_y], [robot_x, robot_y])
@@ -94,7 +94,10 @@ def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
 
     return end_points[::-1], z_star[::-1]
 
-def plot_ray_endpoints(map_size, end_points, robot_pose):
+def plot_ray_endpoints(map_size, end_points, robot_pose, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    
     robot_x, robot_y, _ = robot_pose[:]
     
     for i in range(end_points.shape[0]):
@@ -102,14 +105,15 @@ def plot_ray_endpoints(map_size, end_points, robot_pose):
         ep_y = end_points[i, 1]
 
         # draw casted ray
-        plt.plot([robot_y, ep_y], [map_size[0]-robot_x,  map_size[0]-ep_x], linewidth = '1.2', color='b')
-        plt.plot(ep_y, map_size[0]-ep_x, 'ob', ms=6)
+        ax.plot([robot_y, ep_y], [map_size[0]-robot_x,  map_size[0]-ep_x], linewidth = '1.2', color='b')
+        ax.plot(ep_y, map_size[0]-ep_x, 'ob', ms=6)
 
+def plot_rays_on_gridmap(map, robot_pose, end_points, ax):
 
-def plot_rays_on_gridmap(map, title, robot_pose, end_points):
+    pc = plot_gridmap(map, robot_pose, ax)
+    plot_ray_endpoints(map.shape, end_points, robot_pose, ax)
 
-    plot_gridmap_plt(map, title, robot_pose)
-    plot_ray_endpoints(map.shape, end_points, robot_pose)
+    return pc
 
 
 def main():
@@ -138,7 +142,9 @@ def main():
         print("Perceived obstacles end points:", end_points)
         print("Laser measurements:", z_star)
 
-        plot_rays_on_gridmap(grid_map, 'Ray Casted on Grid Map', robot_pose=robot_pose, end_points=end_points)
+        fig, ax = plt.subplots(figsize=(8,8))
+        pc = plot_rays_on_gridmap(grid_map, robot_pose=robot_pose, end_points=end_points, ax=ax)
+        fig.suptitle('Ray Casted on Grid Map', fontsize = 16)
         plt.show()
 
         # np.savez('ray_casting_z.npz', D=z_star)
@@ -148,7 +154,9 @@ def main():
         print("Perceived obstacles end points:", end_points)
         print("Laser measurements:", z_star)
 
-        plot_rays_on_gridmap(grid_map, 'Ray Casted Bresenham', robot_pose=robot_pose, end_points=end_points)
+        fig, ax = plt.subplots(figsize=(8,8))
+        pc = plot_rays_on_gridmap(grid_map, robot_pose=robot_pose, end_points=end_points, ax=ax)
+        fig.suptitle('Ray Casted Bresenham', fontsize = 16)
         plt.show()
 
     plt.close('all')
