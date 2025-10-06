@@ -86,7 +86,7 @@ class RobotPF:
         self.particles = self.eval_gux(self.particles, u, sigma_u, *g_extra_args)
 
 
-    def update(self, z, sigma_z, eval_hx, hx_args=()):
+    def update(self, z, sigma_z, eval_hx, hx_args=(), z_prob=False):
         """
         Performs the update innovation of the particle filter.
         
@@ -116,8 +116,11 @@ class RobotPF:
         z_hat = np.zeros((self.N, 2))
 
         z_hat = eval_hx(self.particles, *hx_args)
-        # simplification assumes variance is invariant to world projection
-        prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+        # compute the probability of the measure according to the probabilistic sensor model
+        if not z_prob:
+            prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+        else:
+            prob = z_hat
         self.weights *= np.prod(prob, axis=1)
 
 

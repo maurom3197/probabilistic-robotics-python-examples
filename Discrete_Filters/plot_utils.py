@@ -25,19 +25,6 @@ def plot_particles(particles, robot_pose, mu, ax=None, color='k', alpha=1):
 
     return p1, p2
 
-def plot_gridmap(map, ax=None):
-    if ax is None:
-        ax = plt.gca()
-
-    cmap = colors.ListedColormap(['White','Black'])
-    ax.pcolor(map[::-1],cmap=cmap, edgecolors='k', linewidths=0.8)
-
-    if map.shape[0] < 30:
-        ax.set_xticks(ticks=range(map.shape[1]+1), labels=range(0, map.shape[1]+1))
-        ax.set_yticks(ticks=range(map.shape[0]), labels=range(map.shape[0], 0, -1))
-    else:
-        ax.axis('off')
-
 def plot_initial_particles_gridmap(N, particles, map_shape, ax=None):
     if ax is None:
         ax = plt.gca()

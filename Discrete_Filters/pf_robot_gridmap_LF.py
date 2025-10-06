@@ -1,5 +1,6 @@
 import math
 import numpy as np
+
 from Mapping.gridmap_utils import compute_map_occ, plot_gridmap, get_map
 
 from Discrete_Filters.utils import (
@@ -19,20 +20,31 @@ from Discrete_Filters.probabilistic_models import (
     get_odometry_command,
     landmark_range_bearing_model,
     landmark_range_bearing_sensor,
+    likelihood_field_laser_model,
 )
 
+from Sensors_Models.likelihood_fields import compute_distances, precompute_likelihood_field, plot_likelihood_fields
+from Sensors_Models.ray_casting import cast_rays, plot_rays_on_gridmap
+from Sensors_Models.utils import compute_p_hit_dist, evaluate_p_hit
 
 def run_localization_sim(
     pf: RobotPF,
     pf_dt,
     landmarks,
     map,
-    max_range,
-    fov,
+    landm_max_range,
+    landm_fov,
+    lidar_max_range,
+    lidar_fov,
+    lidar_num_rays,
     z_landm_sensor,
     eval_hx_landm,
+    eval_hx_lidar,
     sigma_u,
-    sigma_z,
+    sigma_z_landm,
+    mix_density_lidar,
+    distances,
+    sigma_z_lidar,
     motion_model="velocity",
     sigma_u_odom=0.0,
     sim_step_s=0.1,
@@ -56,7 +68,7 @@ def run_localization_sim(
     fig, ax = plt.subplots(1, 2, figsize=(9, 4))
     plot_gridmap(map, ax=ax[0])
     # fig_particles, ax_particles = plt.subplots(1, 1, figsize=(6, 6))
-    lmarks_legend = ax[0].scatter(landmarks[:, 1], map.shape[0]-landmarks[:, 0], marker="s", s=60, label="Landmarks")
+    #lmarks_legend = ax[0].scatter(landmarks[:, 1], map.shape[0]-landmarks[:, 0], marker="s", s=60, label="Landmarks")
 
     track = []  # list to store all the robot positions
     track_odom = []  # list to store all the odometry positions
@@ -94,23 +106,35 @@ def run_localization_sim(
             pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
 
             # for each landmark simulate the measurement of the landmark
-            for lmark in landmarks:
-                z = z_landm_sensor(
-                    sim_pos, lmark, sigma_z, max_range=max_range, fov=fov
-                )  # landmarks out of the sensor's FOV will be not detected
+            # for lmark in landmarks:
+            #     z = z_landm_sensor(
+            #         sim_pos, lmark, sigma_z_landm, max_range=landm_max_range, fov=landm_fov
+            #     )  # landmarks out of the sensor's FOV will be not detected
 
-                # if any landmark detected by the sensor, update the PF
-                if z is not None:
-                    # run the correction step of the PF
-                    pf.update(z, sigma_z, eval_hx=eval_hx_landm, hx_args=(lmark, sigma_z))
+            #     # if any landmark detected by the sensor, update the PF
+            #     if z is not None:
+            #         # run the correction step of the PF
+            #         pf.update(z, sigma_z_landm, eval_hx=eval_hx_landm, hx_args=(lmark, sigma_z_landm))
+            
+            # simulate laser measurement adding noise to the ones obtained by casting rays in the map
+            end_points, rng = cast_rays(map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
+            z_points = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
+            z_points = np.clip(z_points, 0., lidar_max_range)
+
+            # update filter state with likelihood field model
+            pf.update(z_points, sigma_z_lidar, eval_hx=eval_hx_lidar, 
+                      hx_args=(z_points, distances, sigma_z_lidar, lidar_num_rays, lidar_max_range, lidar_fov, mix_density_lidar), 
+                      z_prob=True
+                      )
 
             # after the update of the weights with the measurements, we normalize the weights to make them probabilities
             pf.normalize_weights()
 
             # resample if too few effective particles
             neff = pf.neff()
-
-            if neff < pf.N / 2:
+            print(np.max(pf.weights))
+            if neff < 2*pf.N / 3:
+                print(np.max(pf.weights))
                 pf.resampling(
                     resampling_fn=pf.resampling_fn,  # simple, residual, stratified, systematic
                     resampling_args=(pf.weights,),  # tuple: only pf.weights if using pre-defined functions
@@ -137,7 +161,7 @@ def run_localization_sim(
     (track_odom_legend,) = ax[0].plot(track_odom[:, 1], map.shape[0]*np.ones_like(track_odom[:,0])-track_odom[:, 0], "--", label="Odometry path")
     ax[0].axis("equal")
     ax[0].set_title("PF Robot localization Gridmap")
-    ax[0].legend(handles=[lmarks_legend, track_legend, track_odom_legend, legend_PF1, legend_PF2, initial_particles_legend])
+    ax[0].legend(handles=[track_legend, track_odom_legend, legend_PF1, legend_PF2, initial_particles_legend])
 
     # error plots
     (pf_err,) = ax[1].plot(
@@ -160,6 +184,7 @@ def run_localization_sim(
     plt.show()
 
 
+
 def main():
 
     ##### Define Parameters #####
@@ -174,8 +199,8 @@ def main():
           [17.5, 16.5], [9.5,7.5], [11.5,4.5], [15.5,2.5], [0.5,12.5], [0.5,16.5]]
     )
     # sensor params
-    max_range = 8.0
-    fov = math.pi / 2
+    landm_max_range = 8.0
+    landm_fov = math.pi / 2
 
     # sim params
     pf_dt = 1.0  # time interval between measurements [s]
@@ -209,24 +234,43 @@ def main():
     # Define noise params and Q for landmark sensor model
     std_range = 0.1  # [m]
     std_bearing = np.deg2rad(1.0)  # [rad]
-    sigma_z = np.array([std_range, std_bearing])
+    sigma_z_landm = np.array([std_range, std_bearing])
 
     # Define gridmap
     map_path = '2D_maps/map3.png'
 
     xy_reso = 3
     _, grid_map = get_map(map_path, xy_reso)
+    
     # print(grid_map)
     max_x = grid_map.shape[0]
     max_y = grid_map.shape[1]
-    occ_spaces, free_spaces, map_cells = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
+
+    # Lidar sensor parameters
+    lidar_max_range = 10.0
+    lidar_num_rays = 60
+    lidar_fov = 2*math.pi
+    mix_density, sigma_z_lidar = [0.85, 0.05, 0.10], 0.75
+
+    # To efficiently use Likelihood Field, pre-compute distances from obstacles in the map (from each map cell)
+    distances = compute_distances(map_spaces, occ_spaces)
+
+    # Plot gaussian likelihood fields
+    # max_dist = 2.0 # this should be checked...
+    # p_gridmap = precompute_likelihood_field(grid_map, sigma_z_lidar)
+    # plot_likelihood_fields(p_gridmap, np.array([19, 2, 2*np.pi/3]))
+    # plt.show()
+
+    # reshape precomputed distances to have a lookup table with map size
+    distances = np.reshape(distances, grid_map.shape)
 
     # Initialize the PF
     pf = RobotPF(
         dim_x=dim_x,
         dim_u=dim_u,
         eval_gux=eval_gux,
-        resampling_fn=stratified_resample,
+        resampling_fn=systematic_resample,
         boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
         N=500,
     )
@@ -234,6 +278,15 @@ def main():
     pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
     pf.Sigma = np.diag([0.1, 0.1, 0.1])   # initial covariance matrix
     
+    # cast rays: compute end points and laser measurements
+    # end_points, z_star = cast_rays(grid_map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range)
+    # print("Perceived obstacles end points:", end_points)
+    # print("Laser measurements:", z_star)
+    # fig, ax = plt.subplots(figsize=(8,8))
+    # pc = plot_rays_on_gridmap(grid_map, robot_pose=pf.mu, end_points=end_points, ax=ax)
+    # fig.suptitle('Ray Casted on Grid Map', fontsize = 16)
+    # plt.show()
+
     # initialize particles using the gridmap using the free spaces list
     init_particles_dist = "uniform_rejection"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
     # method 1: use map pre-computed index list of free spaces
@@ -258,11 +311,18 @@ def main():
         landmarks=landmarks,
         map=grid_map,
         z_landm_sensor=landmark_range_bearing_sensor,
-        max_range=max_range,
-        fov=fov,
+        landm_max_range=landm_max_range,
+        landm_fov=landm_fov,
+        lidar_max_range=lidar_max_range,
+        lidar_fov=lidar_fov,
+        lidar_num_rays=lidar_num_rays,
         eval_hx_landm=landmark_range_bearing_model,
+        eval_hx_lidar=likelihood_field_laser_model,
         sigma_u=sigma_u,
-        sigma_z=sigma_z,
+        sigma_z_landm=sigma_z_landm,
+        sigma_z_lidar=sigma_z_lidar,
+        mix_density_lidar=mix_density,
+        distances=distances,
         motion_model=motion_model,
         sigma_u_odom=sigma_u_odom,
         particles_plot_step_s=3.0,

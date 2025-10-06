@@ -1,6 +1,6 @@
 import math
 import numpy as np
-
+from Sensors_Models.utils import compute_p_hit_dist, evaluate_p_hit
 
 def sample_velocity_motion_model(x, u, a, dt):
     """Sample velocity motion model.
@@ -128,3 +128,55 @@ def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fo
         return None
 
     return z
+
+# TO CHECK
+def likelihood_field_laser_model(robot_pose, z_points, distances, sigma=1.0, num_rays=36, max_range=8.0, fov=math.pi, mix_density=[0.9, 0.05, 0.05]):
+    """""
+    Likelihood field probabilistic model function
+    robot pose: the estimated robot pose
+    z_points: the laser measurements
+    distances: distances of nearest obstacles in the map, it can be precomputed and used as lookup table
+    """ ""
+
+    if robot_pose is list:
+        robot_pose = np.array(robot_pose)
+
+    if robot_pose.ndim == 1:  # manage the case of a single pose
+        robot_pose = robot_pose.reshape(1, -1)
+    
+    # define left most angle of FOV and step angle
+    start_angle = robot_pose[:, 2] - fov/2
+    step_angle = fov/num_rays
+    
+    dist_z = np.zeros((robot_pose.shape[0], num_rays))
+    p_z = np.ones((robot_pose.shape[0], num_rays)) / robot_pose.shape[0]
+
+    # loop over casted rays
+    for k, z_k in enumerate(z_points):
+        # get ray target coordinates
+        target_x = robot_pose[:, 0] + np.cos(start_angle) * z_points[k]
+        target_y = robot_pose[:, 1] + np.sin(start_angle) * z_points[k]
+
+        # Endpoints are compute with z obtained from the real robot with ray casting
+        # When applied to particles they can fall beyond map limits!
+        x, y = target_x.astype(int), target_y.astype(int)
+        valid = np.where((x>=0).all() & (x<distances.shape[0]-1).all() & (y>=0).all() & (y<distances.shape[1]-1).all())
+        
+        # x, y = target_x.astype(int), target_y.astype(int)
+        # x, y = np.clip(target_x.astype(int), 0, distances.shape[0]-1), np.clip(target_y.astype(int), 0, distances.shape[1]-1)
+        # valid = np.where((x>=0).all() & (x<distances.shape[0]-1).all() & (y>=0).all() & (y<distances.shape[0]-1).all()) 
+
+        dist_z[valid, k] = distances[x[valid],y[valid]]
+
+        # Calculate hit mode probability
+        p_hit = compute_p_hit_dist(dist_z[valid, k], max_dist=max_range, sigma=sigma)
+        p_z[valid, k] = p_hit
+
+        # increment angle by a single step
+        start_angle[:] += step_angle
+
+    print(np.max(p_z))
+    #p_z_x = evaluate_prob(dist_z, z_points, max_range, mix_density, sigma)
+    # print computed probabilities on the laser measurements
+    #print("probs lidar:", p_z)
+    return p_z

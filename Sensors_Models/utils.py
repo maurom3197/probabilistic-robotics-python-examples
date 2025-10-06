@@ -10,7 +10,7 @@ def gaussian(x, mu, sigma):
     return (1.0 / (np.sqrt(2*np.pi) * sigma)) * np.exp(-0.5 * ((x - mu) / sigma)**2)
 
 # Normalized Gaussian pdf
-def compute_p_hit(dist, max_dist, sigma):
+def compute_p_hit_dist(dist, max_dist, sigma):
     '''
     Compute the hit probability p_hit for a given distance measurement.
     Args:
@@ -27,6 +27,36 @@ def compute_p_hit(dist, max_dist, sigma):
     normalize_hit = 1. / normalize_hit
 
     p_hit = gaussian(dist, 0., sigma)*normalize_hit
+
+    return p_hit
+
+# Vectorized probabilistic beam model
+def evaluate_p_hit(z, z_star, z_max, sigma):
+    """
+    Vectorized probabilistic beam model.
+    Supports scalar or ndarray inputs for z and z_star (must be broadcastable).
+    
+    Args:
+        z:        observed measurement(s), ndarray or float
+        z_star:   expected measurement(s), ndarray or float
+        z_max:    max range (scalar)
+
+    Returns:
+        p_hit (hit prob)
+        Shapes follow broadcast of z and z_star
+    """
+
+    z = np.asarray(z)
+    z_star = np.asarray(z_star)
+
+    # --- Hit mode normalization ---
+    j = np.arange(int(z_max))
+    normalize_hit = np.sum(gaussian(j[:, None], z_star.ravel(), sigma), axis=0)
+    normalize_hit = normalize_hit.reshape(z_star.shape)
+    normalize_hit = np.where(normalize_hit > 0, 1.0 / normalize_hit, 1.0)
+
+    # Hit probability
+    p_hit = gaussian(z, z_star, sigma) * normalize_hit
 
     return p_hit
 

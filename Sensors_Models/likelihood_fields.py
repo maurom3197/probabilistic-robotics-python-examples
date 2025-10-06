@@ -4,7 +4,11 @@ import matplotlib.pyplot as plt
 
 from Mapping.gridmap_utils import get_map, plot_gridmap, compute_map_occ
 from Sensors_Models.ray_casting import cast_rays
-from Sensors_Models.utils import compute_p_hit
+from Sensors_Models.utils import compute_p_hit_dist, evaluate_p_hit
+
+# TODO: implement the likelihood fields model in a single function
+# using the provided utility functions
+# check if the function evaluate_prob and compute_p_hit_dist is correct compared to evaluate_p_hit
 
 def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     """""
@@ -14,7 +18,7 @@ def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     p_z = np.zeros((z.shape[0]))
     for k, z_k in enumerate(z):
         # Calculate hit mode probability
-        p_hit = compute_p_hit(dist[k], max_dist, _sigma)
+        p_hit = compute_p_hit_dist(dist[k], max_dist, _sigma)
 
         # Calculate max mode probability
         if z_k == z_max:
@@ -83,6 +87,26 @@ def compute_distances(end_points, obst):
         distances[k] = min_dis
 
     return distances
+
+def precompute_likelihood_field(grid_map, sigma, max_dist=None):
+    """""
+    Pre-compute the likelihood field for the entire map
+    """""
+    occ_spaces, _, map_spaces = compute_map_occ(grid_map)
+    distances = compute_distances(map_spaces, occ_spaces)
+
+    if not max_dist:
+        max_dist = max(distances)
+
+    p_z = np.zeros((map_spaces.shape[0]))
+    for i, ep in enumerate(map_spaces):
+        p_zi = compute_p_hit_dist(distances[i], max_dist, sigma)
+        p_z[i] = p_zi
+    
+    p_gridmap = np.reshape(p_z, grid_map.shape)
+
+    return p_gridmap
+
 
 def plot_likelihood_fields(p_gridmap, robot_pose=None, ax=None):
     if ax is None:
@@ -182,10 +206,9 @@ def main():
     max_dist = max(distances)
     p_z = np.zeros((map_spaces.shape[0]))
     for i, ep in enumerate(map_spaces):
-        p_zi = compute_p_hit(distances[i], max_dist, sigma)
+        p_zi = compute_p_hit_dist(distances[i], max_dist, sigma)
         p_z[i] = p_zi
     
-    print()
     p_gridmap = np.reshape(p_z, grid_map.shape)
 
     fig, ax = plt.subplots()
