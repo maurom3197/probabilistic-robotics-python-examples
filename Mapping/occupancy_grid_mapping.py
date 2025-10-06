@@ -3,9 +3,8 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap, plot_gridmap_plt
+from Mapping.gridmap_utils import get_map, plot_gridmap
 from Sensors_Models.ray_casting import cast_rays, plot_ray_endpoints
-from Sensors_Models.utils import evaluate_range_beam_dist_array
 
 def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays):
     '''
@@ -81,7 +80,7 @@ def main():
     _, grid_map = get_map(map_path, xy_reso)
 
     # load robot poses
-    robot_poses = np.load('Mapping/robot_poses.npy')  # (x, y, theta) in pixel coordinates
+    robot_poses = np.load('Mapping/robot_poses.npy')[::2]  # (x, y, theta) in pixel coordinates
     robot_pose0 = robot_poses[0]  # (x, y, theta) in pixel coordinates
     print("Robot initial pose:", robot_pose0[0], robot_pose0[1], math.degrees(robot_pose0[2]))
 
@@ -89,9 +88,9 @@ def main():
     PLOT_TIME_STEPS = True
 
     # Range sensor parameters
-    fov = math.pi # Sensor Field of View
+    fov = 2*math.pi # Sensor Field of View
     num_rays = 60 # Number of rays
-    z_max = 10.0 # Max range
+    z_max = 12.0 # Max range
 
     # Inverse sensor model parameters for laser range finder
     alpha = 1.0 # width of a cell
@@ -128,10 +127,11 @@ def main():
         occ_grid_map = 1 - 1 / (1 + np.exp(log_odds))  # convert log-odds to probability
 
         if PLOT_TIME_STEPS:
-            if t % 60 == 0:
+            if t % 30 == 0:
                 print(f"Time step: {t}")
-                plot_gridmap_plt(occ_grid_map, 'Map Inverse Range Model', robot_poses[t])  
-                plot_ray_endpoints(occ_grid_map.shape, ray_end_points[t], robot_poses[t])
+                fig1, ax1 = plt.subplots()
+                plot_gridmap(occ_grid_map, robot_poses[t], ax1)  
+                plot_ray_endpoints(occ_grid_map.shape, ray_end_points[t], robot_poses[t], ax1)
                 plt.pause(0.05)
                 plt.show()
 
