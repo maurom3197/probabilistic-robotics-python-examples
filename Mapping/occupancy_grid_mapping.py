@@ -6,6 +6,22 @@ import matplotlib.pyplot as plt
 from Mapping.gridmap_utils import get_map, plot_gridmap
 from Sensors_Models.ray_casting import cast_rays, plot_ray_endpoints
 
+from math import fmod, pi, fabs
+
+def normalize_angle_positive(angle):
+    """ Normalizes the angle to be 0 to 2*pi
+        It takes and returns radians. """
+    return angle % (2.0*pi)
+
+
+def normalize_angle(angle):
+    """ Normalizes the angle to be -pi to +pi
+        It takes and returns radians."""
+    a = normalize_angle_positive(angle)
+    if a > pi:
+        a -= 2.0 *pi
+    return a
+
 def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays):
     '''
     Inverse sensor model for a laser range finder
@@ -23,6 +39,7 @@ def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov,
 
     r = np.round(np.sqrt((m_i[0] - x_t[0])**2 + (m_i[1] - x_t[1])**2), decimals=2)
     phi = math.atan2(m_i[1] - x_t[1], m_i[0] - x_t[0]) - x_t[2]
+    phi = normalize_angle(phi)
     # find the k-th ray that contain the m_i
     k = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
     z_t_k = z_t[k]  # range measurement of the k-th ray
@@ -64,6 +81,7 @@ def algorithm_occupancy_grid_mapping(l_t, x_t, z_t, alpha, beta, z_max, fov, num
             # if m_i in the perceptuion field of the sensor:
             r = np.round(np.sqrt((m_i[0] - x_t[0])**2 + (m_i[1] - x_t[1])**2), decimals=2)
             phi = math.atan2(m_i[1] - x_t[1], m_i[0] - x_t[0]) - x_t[2]
+            phi = normalize_angle(phi)
             if r <= z_max and abs(phi) <= fov / 2:
                 # update log-odds value
                 l_t1[i, j] = l_t[i, j] + algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays) - l0
@@ -140,7 +158,6 @@ def main():
     #### Final plot of the original and the obtained maps ######
     fig, ax = plt.subplots(1, 2, figsize=(11, 5))
     plot_gridmap(grid_map, robot_pose0, ax=ax[0]) 
-    ax[0].axis("equal")
     ax[0].set_title("Original Gridmap")
     pc = plot_gridmap(occ_grid_map, ax=ax[1])    
     ax[1].set_title('Inverse Range Model')
