@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import skimage
-
+from math import pi
 
 def get_map(map_path, xy_reso, plot_map=False):
     """"
@@ -63,6 +63,20 @@ def compute_map_occ(map):
 
     return occ_poses, free_poses, map_poses
 
+def normalize_angle(theta):
+    """
+    Normalize angles between [-pi, pi)
+    """
+    theta = theta % (2 * np.pi)  # force in range [0, 2 pi)
+    if np.isscalar(theta):
+        if theta > np.pi:  # move to [-pi, pi)
+            theta -= 2 * np.pi
+    else:
+        theta_ = theta.copy()
+        theta_[theta>np.pi] -= 2 * np.pi
+        return theta_
+    
+    return theta
 
 def plot_gridmap(map, robot_pose=None, ax=None):
     if ax is None:

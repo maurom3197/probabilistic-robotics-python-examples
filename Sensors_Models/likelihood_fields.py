@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from Mapping.gridmap_utils import get_map, plot_gridmap, compute_map_occ
 from Sensors_Models.ray_casting import cast_rays
-from Sensors_Models.utils import compute_p_hit_dist, evaluate_p_hit
+from Sensors_Models.utils import compute_p_hit_dist, precompute_p_hit_map
 
 # TODO: implement the likelihood fields model in a single function
 # using the provided utility functions
@@ -194,28 +194,28 @@ def main():
     plot_ray_prob(grid_map.shape, end_points_z, robot_pose, p_z_z)
     
     fig.colorbar(plt.cm.ScalarMappable(cmap='viridis'), ax=ax, label='p(z|x)')
-    fig.savefig("ray_prob_likelihood_field.png")
+    # fig.savefig("ray_prob_likelihood_field.png")
     plt.show()
 
-    ###########################################################
-    #### pre-compute likelihood fields on the entire map ######
-    ###########################################################
 
+    ############################################################
+    #### pre-compute likelihood fields on the entire map  ######
+    ############################################################
+    # using the provided utility function
     distances = compute_distances(map_spaces, occ_spaces)
-
-    max_dist = max(distances)
-    p_z = np.zeros((map_spaces.shape[0]))
-    for i, ep in enumerate(map_spaces):
-        p_zi = compute_p_hit_dist(distances[i], max_dist, sigma)
-        p_z[i] = p_zi
+    max_dist = np.max(distances)
+    sigma_dist = np.std(distances)
+    print("max_dist:", max_dist, "sigma_dist:", sigma_dist)
+    distance_grid = distances.reshape(grid_map.shape)
     
-    p_gridmap = np.reshape(p_z, grid_map.shape)
+    # the probability gridmap can be used as a look-up table during localization
+    p_gridmap = precompute_p_hit_map(distance_grid, max_dist, sigma_dist) 
 
     fig, ax = plt.subplots()
     plot_likelihood_fields(p_gridmap, robot_pose=robot_pose, ax=ax)
     fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
     ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
-    fig.savefig("likelihood_field.png")
+    # fig.savefig("likelihood_field_sigma_dist.png")
     plt.show()
 
     plt.close('all')

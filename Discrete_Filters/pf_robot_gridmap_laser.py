@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 from Mapping.gridmap_utils import compute_map_occ, plot_gridmap, get_map
 
@@ -11,7 +12,7 @@ from Discrete_Filters.utils import (
 )
 
 from Discrete_Filters.plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap
-import matplotlib.pyplot as plt
+
 from Discrete_Filters.pf import RobotPF
 
 from Discrete_Filters.probabilistic_models import (
@@ -20,12 +21,12 @@ from Discrete_Filters.probabilistic_models import (
     get_odometry_command,
     landmark_range_bearing_model,
     landmark_range_bearing_sensor,
-    likelihood_field_laser_model,
+    likelihood_field_laser_model_pf as likelihood_field_laser_model,
 )
 
-from Sensors_Models.likelihood_fields import compute_distances, precompute_likelihood_field, plot_likelihood_fields
+from Sensors_Models.likelihood_fields import compute_distances, plot_likelihood_fields
 from Sensors_Models.ray_casting import cast_rays, plot_rays_on_gridmap
-from Sensors_Models.utils import compute_p_hit_dist, evaluate_p_hit
+from Sensors_Models.utils import precompute_p_hit_map
 
 def run_localization_sim(
     pf: RobotPF,
@@ -44,6 +45,7 @@ def run_localization_sim(
     sigma_z_landm,
     mix_density_lidar,
     distances,
+    prob_gridmap,
     sigma_z_lidar,
     motion_model="velocity",
     sigma_u_odom=0.0,
@@ -105,36 +107,36 @@ def run_localization_sim(
 
             pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
 
-            # for each landmark simulate the measurement of the landmark
-            # for lmark in landmarks:
-            #     z = z_landm_sensor(
-            #         sim_pos, lmark, sigma_z_landm, max_range=landm_max_range, fov=landm_fov
-            #     )  # landmarks out of the sensor's FOV will be not detected
+            if eval_hx_landm:
+                # Simulate the measurement of the landmarks
+                for lmark in landmarks:
+                    z = z_landm_sensor(
+                        sim_pos, lmark, sigma_z_landm, max_range=landm_max_range, fov=landm_fov
+                    )  # landmarks out of the sensor's FOV will be not detected
 
-            #     # if any landmark detected by the sensor, update the PF
-            #     if z is not None:
-            #         # run the correction step of the PF
-            #         pf.update(z, sigma_z_landm, eval_hx=eval_hx_landm, hx_args=(lmark, sigma_z_landm))
+                    # if any landmark detected by the sensor, update the PF
+                    if z is not None:
+                        # run the correction step of the PF
+                        pf.update(z, sigma_z_landm, eval_hx=eval_hx_landm, hx_args=(lmark, sigma_z_landm))
             
-            # simulate laser measurement adding noise to the ones obtained by casting rays in the map
-            end_points, rng = cast_rays(map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
-            z_points = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
-            z_points = np.clip(z_points, 0., lidar_max_range)
+            if eval_hx_lidar:
+                # simulate laser measurement adding noise to the ones obtained by casting rays in the map
+                _, rng = cast_rays(map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
+                z_points = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
+                z_points = np.clip(z_points, 0., lidar_max_range)
 
-            # update filter state with likelihood field model
-            pf.update(z_points, sigma_z_lidar, eval_hx=eval_hx_lidar, 
-                      hx_args=(z_points, distances, sigma_z_lidar, lidar_num_rays, lidar_max_range, lidar_fov, mix_density_lidar), 
-                      z_prob=True
-                      )
-
+                # update filter state with laser range sensor model
+                pf.update(z_points, sigma_z_lidar, eval_hx=eval_hx_lidar, 
+                        hx_args=(z_points, distances, prob_gridmap, sigma_z_lidar, lidar_num_rays, lidar_max_range, lidar_fov, mix_density_lidar),
+                        )   
+                
             # after the update of the weights with the measurements, we normalize the weights to make them probabilities
             pf.normalize_weights()
 
             # resample if too few effective particles
             neff = pf.neff()
-            print(np.max(pf.weights))
-            if neff < 2*pf.N / 3:
-                print(np.max(pf.weights))
+            if neff < pf.N / 2:
+                print("NEFF below threshold, resampling...")
                 pf.resampling(
                     resampling_fn=pf.resampling_fn,  # simple, residual, stratified, systematic
                     resampling_args=(pf.weights,),  # tuple: only pf.weights if using pre-defined functions
@@ -210,10 +212,12 @@ def main():
     dim_x = 3
     # First, choose the Motion Model
     motion_model = "velocity"  # 'odometry' or 'velocity'
+    # Then, choose the Sensor Model
+    sensor_model = ["likelihood_fields"]  # 'landmarks', 'beam_range', or 'likelihood_fields' 
 
     # general noise parameters
-    std_lin_vel = 0.15  # [m/s]
-    std_ang_vel = np.deg2rad(2.0)  # [rad/s]
+    std_lin_vel = 0.1  # [m/s]
+    std_ang_vel = np.deg2rad(0.5)  # [rad/s]
     sigma_u = np.array([std_lin_vel, std_ang_vel])
     sigma_u_odom = 0
 
@@ -231,39 +235,60 @@ def main():
         sigma_u_odom = np.array([std_rot1, std_transl, std_rot2])
         eval_gux = sample_odometry_motion_model
 
+    if motion_model not in ["odometry", "velocity"]:
+        raise ValueError("motion_model must be 'odometry' or 'velocity'")
+
+    # Set sensor model functions
+    # landmark sensor model
+    if "landmarks" in sensor_model:
+        landmark_sensor_model = landmark_range_bearing_model
+    else:
+        landmark_sensor_model = None
+
+    # laser range sensor model
+    if "likelihood_fields" in sensor_model:
+        laser_range_sensor_model = likelihood_field_laser_model
+    else:
+        laser_range_sensor_model = None
+
     # Define noise params and Q for landmark sensor model
     std_range = 0.1  # [m]
     std_bearing = np.deg2rad(1.0)  # [rad]
     sigma_z_landm = np.array([std_range, std_bearing])
 
-    # Define gridmap
-    map_path = '2D_maps/map3.png'
-
-    xy_reso = 3
-    _, grid_map = get_map(map_path, xy_reso)
-    
-    # print(grid_map)
-    max_x = grid_map.shape[0]
-    max_y = grid_map.shape[1]
-    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
-
     # Lidar sensor parameters
-    lidar_max_range = 10.0
-    lidar_num_rays = 60
-    lidar_fov = 2*math.pi
-    mix_density, sigma_z_lidar = [0.85, 0.05, 0.10], 0.75
+    lidar_max_range = 5.0
+    lidar_num_rays = 10
+    lidar_fov = math.pi
+    mix_density, sigma_z_lidar = [0.9, 0.00, 0.10], 0.25
+
+    # Define gridmap
+    map_path = '2D_maps/map31.bmp'
+    map_closed_path = '2D_maps/map3.png'
+    xy_reso = 3
+    # _, grid_map = get_map(map_path, xy_reso)
+    _, grid_map = get_map(map_closed_path, xy_reso)
+    max_x, max_y = grid_map.shape[0], grid_map.shape[1]
+
+    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
+    # _, free_spaces, _ = compute_map_occ(grid_map_closed)
 
     # To efficiently use Likelihood Field, pre-compute distances from obstacles in the map (from each map cell)
     distances = compute_distances(map_spaces, occ_spaces)
-
-    # Plot gaussian likelihood fields
-    # max_dist = 2.0 # this should be checked...
-    # p_gridmap = precompute_likelihood_field(grid_map, sigma_z_lidar)
-    # plot_likelihood_fields(p_gridmap, np.array([19, 2, 2*np.pi/3]))
+    max_dist = np.max(distances)
+    sigma_dist = np.std(distances)
+    print("max_dist:", max_dist, "sigma_dist:", sigma_dist)
+    distance_grid = distances.reshape(grid_map.shape)
+    
+    # the probability gridmap can be used as a look-up table during localization
+    p_gridmap = precompute_p_hit_map(distance_grid, max_dist, sigma_dist) 
+    
+    # fig, ax = plt.subplots()
+    # plot_likelihood_fields(p_gridmap, ax=ax)
+    # fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
+    # ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
+    # # fig.savefig("likelihood_field_sigma_dist.png")
     # plt.show()
-
-    # reshape precomputed distances to have a lookup table with map size
-    distances = np.reshape(distances, grid_map.shape)
 
     # Initialize the PF
     pf = RobotPF(
@@ -272,23 +297,15 @@ def main():
         eval_gux=eval_gux,
         resampling_fn=systematic_resample,
         boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
-        N=500,
+        N=2000,
     )
 
     pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
-    pf.Sigma = np.diag([0.1, 0.1, 0.1])   # initial covariance matrix
+    pf.Sigma = np.diag([0.001, 0.001, 0.01])   # initial covariance matrix
     
-    # cast rays: compute end points and laser measurements
-    # end_points, z_star = cast_rays(grid_map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range)
-    # print("Perceived obstacles end points:", end_points)
-    # print("Laser measurements:", z_star)
-    # fig, ax = plt.subplots(figsize=(8,8))
-    # pc = plot_rays_on_gridmap(grid_map, robot_pose=pf.mu, end_points=end_points, ax=ax)
-    # fig.suptitle('Ray Casted on Grid Map', fontsize = 16)
-    # plt.show()
 
     # initialize particles using the gridmap using the free spaces list
-    init_particles_dist = "uniform_rejection"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
+    init_particles_dist = "uniform_free_spaces"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
     # method 1: use map pre-computed index list of free spaces
     if init_particles_dist == "uniform_free_spaces":
         pf.initialize_particles(
@@ -303,7 +320,7 @@ def main():
     elif init_particles_dist == "gaussian":
         pf.initialize_particles(
             initial_dist_fn=initial_gaussian_particles, 
-            initial_dist_args=(pf.dim_x, pf.mu, [3.0, 3.0, math.pi/2], 2, grid_map))
+            initial_dist_args=(pf.dim_x, pf.mu, [7.0, 7.0, np.pi/4], 2, grid_map))
 
     run_localization_sim(
         pf,
@@ -316,13 +333,14 @@ def main():
         lidar_max_range=lidar_max_range,
         lidar_fov=lidar_fov,
         lidar_num_rays=lidar_num_rays,
-        eval_hx_landm=landmark_range_bearing_model,
-        eval_hx_lidar=likelihood_field_laser_model,
+        eval_hx_landm=landmark_sensor_model,
+        eval_hx_lidar=laser_range_sensor_model,
         sigma_u=sigma_u,
         sigma_z_landm=sigma_z_landm,
         sigma_z_lidar=sigma_z_lidar,
         mix_density_lidar=mix_density,
-        distances=distances,
+        distances=distance_grid,
+        prob_gridmap=p_gridmap,
         motion_model=motion_model,
         sigma_u_odom=sigma_u_odom,
         particles_plot_step_s=3.0,

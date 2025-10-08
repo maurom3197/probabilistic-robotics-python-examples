@@ -31,33 +31,32 @@ def compute_p_hit_dist(dist, max_dist, sigma):
     return p_hit
 
 # Vectorized probabilistic beam model
-def evaluate_p_hit(z, z_star, z_max, sigma):
+def precompute_p_hit_map(distances, max_dist=None, sigma=1.0):
     """
     Vectorized probabilistic beam model.
-    Supports scalar or ndarray inputs for z and z_star (must be broadcastable).
+    Supports scalar or ndarray inputs for distances (must be broadcastable).
     
     Args:
-        z:        observed measurement(s), ndarray or float
-        z_star:   expected measurement(s), ndarray or float
+        dist:     observed distances measurement(s), ndarray or float
         z_max:    max range (scalar)
+        sigma:    std dev for hit Gaussian
 
     Returns:
         p_hit (hit prob)
-        Shapes follow broadcast of z and z_star
     """
+    dist_flat = np.asarray(distances.ravel())
 
-    z = np.asarray(z)
-    z_star = np.asarray(z_star)
-
+    if max_dist is None:
+        max_dist = np.max(dist_flat)
+    
     # --- Hit mode normalization ---
-    j = np.arange(int(z_max))
-    normalize_hit = np.sum(gaussian(j[:, None], z_star.ravel(), sigma), axis=0)
-    normalize_hit = normalize_hit.reshape(z_star.shape)
+    j = np.arange(int(max_dist))
+    normalize_hit = np.sum(gaussian(j[:, None], dist_flat, sigma), axis=0)
+    normalize_hit = normalize_hit.reshape(distances.shape)
     normalize_hit = np.where(normalize_hit > 0, 1.0 / normalize_hit, 1.0)
 
     # Hit probability
-    p_hit = gaussian(z, z_star, sigma) * normalize_hit
-
+    p_hit = gaussian(distances, np.zeros_like(distances), sigma) * normalize_hit
     return p_hit
 
 # Vectorized probabilistic beam model

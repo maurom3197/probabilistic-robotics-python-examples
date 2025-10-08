@@ -86,7 +86,7 @@ class RobotPF:
         self.particles = self.eval_gux(self.particles, u, sigma_u, *g_extra_args)
 
 
-    def update(self, z, sigma_z, eval_hx, hx_args=(), z_prob=False):
+    def update(self, z, sigma_z, eval_hx, hx_args=()):
         """
         Performs the update innovation of the particle filter.
         
@@ -117,10 +117,11 @@ class RobotPF:
 
         z_hat = eval_hx(self.particles, *hx_args)
         # compute the probability of the measure according to the probabilistic sensor model
-        if not z_prob:
-            prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
-        else:
+        if len(hx_args) > 2: # likelihood field model
             prob = z_hat
+        else:                # landmark range bearing model
+            prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+
         self.weights *= np.prod(prob, axis=1)
 
 

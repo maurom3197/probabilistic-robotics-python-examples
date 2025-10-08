@@ -3,24 +3,9 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap
+from Mapping.gridmap_utils import get_map, plot_gridmap, normalize_angle
 from Sensors_Models.ray_casting import cast_rays, plot_ray_endpoints
 
-from math import fmod, pi, fabs
-
-def normalize_angle_positive(angle):
-    """ Normalizes the angle to be 0 to 2*pi
-        It takes and returns radians. """
-    return angle % (2.0*pi)
-
-
-def normalize_angle(angle):
-    """ Normalizes the angle to be -pi to +pi
-        It takes and returns radians."""
-    a = normalize_angle_positive(angle)
-    if a > pi:
-        a -= 2.0 *pi
-    return a
 
 def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays):
     '''
@@ -50,7 +35,7 @@ def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov,
     if r > min(z_max, z_t_k + alpha / 2) or abs(phi - phi_k) > beta / 2:
         # print(f"Cell {m_i} is unknown")
         return log(0.5)  # unknown cell
-    if z_t_k < z_max  and abs(r - z_t_k) < (0.5 * alpha + 0.01): 
+    if z_t_k < z_max  and abs(r - z_t_k) < (0.5 * alpha): 
         # print(f"Cell {m_i} is occupied")
         return log(0.7) # occupied cell
     if r <= z_t_k:
@@ -98,7 +83,7 @@ def main():
     _, grid_map = get_map(map_path, xy_reso)
 
     # load robot poses
-    robot_poses = np.load('Mapping/robot_poses.npy')[::2]  # (x, y, theta) in pixel coordinates
+    robot_poses = np.load('Mapping/robot_poses.npy')  # (x, y, theta) in pixel coordinates
     robot_pose0 = robot_poses[0]  # (x, y, theta) in pixel coordinates
     print("Robot initial pose:", robot_pose0[0], robot_pose0[1], math.degrees(robot_pose0[2]))
 
@@ -111,7 +96,7 @@ def main():
     z_max = 12.0 # Max range
 
     # Inverse sensor model parameters for laser range finder
-    alpha = 1.0 # width of a cell
+    alpha = 1.00 # width of a cell
     beta = fov / num_rays  # angle of a ray
     print(f"alpha: {alpha}, beta: {math.degrees(beta)}")
 
@@ -145,7 +130,7 @@ def main():
         occ_grid_map = 1 - 1 / (1 + np.exp(log_odds))  # convert log-odds to probability
 
         if PLOT_TIME_STEPS:
-            if t % 30 == 0:
+            if t % 60 == 0:
                 print(f"Time step: {t}")
                 fig1, ax1 = plt.subplots()
                 plot_gridmap(occ_grid_map, robot_poses[t], ax1)  
