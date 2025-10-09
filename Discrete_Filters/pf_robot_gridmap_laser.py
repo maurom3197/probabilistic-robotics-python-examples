@@ -26,7 +26,7 @@ from Discrete_Filters.probabilistic_models import (
 
 from Sensors_Models.likelihood_fields import precompute_likelihood_field, plot_likelihood_fields
 from Sensors_Models.ray_casting import cast_rays, plot_rays_on_gridmap
-from Sensors_Models.utils import precompute_p_hit_map
+
 
 def run_localization_sim(
     pf: RobotPF,
@@ -122,7 +122,7 @@ def run_localization_sim(
             if eval_hx_lidar:
                 # simulate laser measurement adding noise to the ones obtained by casting rays in the map
                 _, rng = cast_rays(map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
-                z_points = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
+                z_points = rng + np.random.normal(0, sigma_z_lidar**2, size=lidar_num_rays)
                 z_points = np.clip(z_points, 0., lidar_max_range)
 
                 # update filter state with laser range sensor model
@@ -182,7 +182,6 @@ def run_localization_sim(
 
     fig.suptitle("PF Robot localization - " + motion_model + "motion model")
     fig.tight_layout()
-
     plt.show()
 
 
@@ -205,7 +204,7 @@ def main():
     landm_fov = math.pi / 2
 
     # sim params
-    pf_dt = 1.0  # time interval between measurements [s]
+    pf_dt = 1  # time interval between measurements [s]
     sim_length_s = 28  # length of the simulation [s]
 
     # Probabilistic models parameters
@@ -252,15 +251,15 @@ def main():
         laser_range_sensor_model = None
 
     # Define noise params and Q for landmark sensor model
-    std_range = 0.1  # [m]
+    std_range = 0.1 # [m]
     std_bearing = np.deg2rad(1.0)  # [rad]
     sigma_z_landm = np.array([std_range, std_bearing])
 
     # Lidar sensor parameters
-    lidar_max_range = 10.0
+    lidar_max_range = 8.0
     lidar_num_rays = 6
-    lidar_fov = math.pi
-    mix_density, sigma_z_lidar = [0.9, 0.00, 0.1], 0.25
+    lidar_fov = 2*math.pi
+    mix_density, sigma_z_lidar = [0.9, 0.00, 0.1], 0.1 # for likelihood field model
 
     # Define gridmap
     map_path = '2D_maps/map31_grey.png'
@@ -289,12 +288,10 @@ def main():
         N=500,
     )
 
-    pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
-    pf.Sigma = np.diag([0.01, 0.01, 0.01])   # initial covariance matrix
-    
+    pf.mu = np.array([19, 2, 2*np.pi/3])     # initial x, y, theta of the robot  
 
     # initialize particles using the gridmap using the free spaces list
-    init_particles_dist = "uniform_rejection"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
+    init_particles_dist = "uniform_free_spaces"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
     # method 1: use map pre-computed index list of free spaces
     if init_particles_dist == "uniform_free_spaces":
         pf.initialize_particles(

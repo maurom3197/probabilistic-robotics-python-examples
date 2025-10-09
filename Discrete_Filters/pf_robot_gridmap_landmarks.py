@@ -219,7 +219,7 @@ def main():
     # print(grid_map)
     max_x = grid_map.shape[0]
     max_y = grid_map.shape[1]
-    occ_spaces, free_spaces, map_cells = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, _, map_cells = compute_map_occ(grid_map)
 
     # Initialize the PF
     pf = RobotPF(

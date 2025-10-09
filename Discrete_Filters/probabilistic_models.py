@@ -148,11 +148,11 @@ def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid,
     # Goal: compute the prob associated to each particle based on the laser measurements
     
     # Precompute some constants
-    max_dist = np.max(distances)
-    sigma_dist = np.std(distances)
-    p_max_dist = compute_p_hit_dist(max_dist, max_dist, sigma_dist)
-    p_rand = 1.0 / z_max
-    step_angle = fov/num_rays
+    max_dist = np.max(distances) # max distance in the distance map
+    sigma_dist = np.std(distances) # use std of the distance map as sigma
+    p_max_dist = compute_p_hit_dist(max_dist, max_dist, sigma_dist) # max distance prob
+    p_rand = 1.0 / z_max # uniform random component
+    step_angle = fov/num_rays # step angle between rays
 
     # print("max_dist, sigma_dist:", max_dist, sigma_dist)
     p_max_dist = compute_p_hit_dist(max_dist, max_dist, sigma_dist)
@@ -189,11 +189,8 @@ def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid,
                 p_hit_k = p_max_dist
                 # print(f"Particle {i}, ray {k} is out of map limits, assigning p_hit = p_max_dist: {p_max_dist}")
 
-            # Calculate random mode probability
-            p_rand_k = 1.0 / z_max
-
             # Calculate the final mixed probability for the k-th ray
-            p_k = mix_density[0] * p_hit_k + mix_density[2] * p_rand_k
+            p_k = mix_density[0] * p_hit_k + mix_density[2] * p_rand
             # store the prob associated to the k-th ray for the i-th particle
             probs[i, k] = p_k
 

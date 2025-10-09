@@ -6,9 +6,6 @@ from Mapping.gridmap_utils import get_map, plot_gridmap, compute_map_occ
 from Sensors_Models.ray_casting import cast_rays
 from Sensors_Models.utils import compute_p_hit_dist, precompute_p_hit_map
 
-# TODO: implement the likelihood fields model in a single function
-# using the provided utility functions
-# check if the function evaluate_prob and compute_p_hit_dist is correct compared to evaluate_p_hit
 
 def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     """""
@@ -97,7 +94,7 @@ def precompute_likelihood_field(grid_map, sigma=None, max_dist=None):
     distance_grid = distances.reshape(grid_map.shape)
 
     if not max_dist:
-        max_dist = max(distances)
+        max_dist = np.max(distances)
     if not sigma:
         sigma = np.std(distances)
 

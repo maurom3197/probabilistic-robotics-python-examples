@@ -172,6 +172,7 @@ class RobotPF:
         """
         Estimate the state of the robot
         """
+        # get indexes of the resampled particles
         indexes = resampling_fn(*resampling_args)
         # resample according to indexes
         self.particles[:] = self.particles[indexes]

@@ -105,7 +105,7 @@ def plot_gridmap(map, robot_pose=None, ax=None):
     gridmap_values = np.unique(map)
     if gridmap_values.size > 2:
         unknown_value = gridmap_values[(gridmap_values != 0) & (gridmap_values != 1)][0]
-        print("Map unknown_value:", unknown_value)
+        # print("Map unknown_value:", unknown_value)
     else:
         unknown_value = 0.5  # just a value in [0, 1]
 
