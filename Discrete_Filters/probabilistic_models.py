@@ -179,7 +179,7 @@ def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid,
 
             # check if endpoint is inside the map limits
             x, y = int(target_x), int(target_y)
-            if x>=0 and y>=0 and x<distances.shape[0] and y<distances.shape[1]:
+            if x>=0 and y>=0 and x<distances.shape[0] and y<distances.shape[1] and p_hit_grid[x, y]>0:
                 # Calculate Gaussian hit mode probability
                 # p_hit_k = compute_p_hit_dist(distances[x, y], max_dist=max_dist, sigma=sigma_dist)
                 p_hit_k = p_hit_grid[x, y]

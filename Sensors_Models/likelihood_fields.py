@@ -61,7 +61,7 @@ def find_endpoints(robot_pose, z, num_rays, fov):
     return end_points
 
 
-def compute_distances(end_points, obst):
+def compute_distances(end_points, obst_cells):
     """""
     Compute the distance to the nearest obstacle in the map for a given endpoint (x,y)
     """""
@@ -73,7 +73,7 @@ def compute_distances(end_points, obst):
 
         # Search minimum distance
         min_dis = float("inf")
-        for i_obst in obst:
+        for i_obst in obst_cells:
             if (ep == i_obst).all(0):
                 min_dis = 0
                 break
@@ -88,24 +88,32 @@ def compute_distances(end_points, obst):
 
     return distances
 
-def precompute_likelihood_field(grid_map, sigma, max_dist=None):
+def precompute_likelihood_field(grid_map, sigma=None, max_dist=None):
     """""
     Pre-compute the likelihood field for the entire map
     """""
-    occ_spaces, _, map_spaces = compute_map_occ(grid_map)
+    occ_spaces, _, _, map_spaces = compute_map_occ(grid_map)
     distances = compute_distances(map_spaces, occ_spaces)
+    distance_grid = distances.reshape(grid_map.shape)
 
     if not max_dist:
         max_dist = max(distances)
+    if not sigma:
+        sigma = np.std(distances)
 
-    p_z = np.zeros((map_spaces.shape[0]))
-    for i, ep in enumerate(map_spaces):
-        p_zi = compute_p_hit_dist(distances[i], max_dist, sigma)
-        p_z[i] = p_zi
-    
-    p_gridmap = np.reshape(p_z, grid_map.shape)
+    # handle unknown cells in the gridmap (if any)
+    gridmap_values = np.unique(grid_map)
+    if gridmap_values.size > 2:
+        unknown_value = gridmap_values[(gridmap_values != 0) & (gridmap_values != 1)][0]
+        print("unknown_value:", unknown_value)
 
-    return p_gridmap
+        # unknown cells will have a distance of max_dist
+        distance_grid[grid_map == unknown_value] = max_dist
+
+    # the probability gridmap can be used as a look-up table during localization
+    p_gridmap = precompute_p_hit_map(distance_grid, max_dist, sigma)
+
+    return p_gridmap, distance_grid
 
 
 def plot_likelihood_fields(p_gridmap, robot_pose=None, ax=None):
@@ -156,7 +164,7 @@ def main():
     xy_reso = 4
     _, grid_map = get_map(map_path, xy_reso)
     # print(grid_map)
-    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, unknown, map_spaces = compute_map_occ(grid_map)
     
     fov = math.pi / 4
     num_rays = 12

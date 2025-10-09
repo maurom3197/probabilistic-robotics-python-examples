@@ -24,7 +24,7 @@ from Discrete_Filters.probabilistic_models import (
     likelihood_field_laser_model_pf as likelihood_field_laser_model,
 )
 
-from Sensors_Models.likelihood_fields import compute_distances, plot_likelihood_fields
+from Sensors_Models.likelihood_fields import precompute_likelihood_field, plot_likelihood_fields
 from Sensors_Models.ray_casting import cast_rays, plot_rays_on_gridmap
 from Sensors_Models.utils import precompute_p_hit_map
 
@@ -257,37 +257,26 @@ def main():
     sigma_z_landm = np.array([std_range, std_bearing])
 
     # Lidar sensor parameters
-    lidar_max_range = 5.0
-    lidar_num_rays = 10
+    lidar_max_range = 10.0
+    lidar_num_rays = 6
     lidar_fov = math.pi
-    mix_density, sigma_z_lidar = [0.9, 0.00, 0.10], 0.25
+    mix_density, sigma_z_lidar = [0.9, 0.00, 0.1], 0.25
 
     # Define gridmap
-    map_path = '2D_maps/map31.bmp'
-    map_closed_path = '2D_maps/map3.png'
+    map_path = '2D_maps/map31_grey.png'
     xy_reso = 3
-    # _, grid_map = get_map(map_path, xy_reso)
-    _, grid_map = get_map(map_closed_path, xy_reso)
+    _, grid_map = get_map(map_path, xy_reso)
     max_x, max_y = grid_map.shape[0], grid_map.shape[1]
-
-    occ_spaces, free_spaces, map_spaces = compute_map_occ(grid_map)
-    # _, free_spaces, _ = compute_map_occ(grid_map_closed)
+    occ_spaces, free_spaces, unknown_spaces, map_spaces = compute_map_occ(grid_map)
 
     # To efficiently use Likelihood Field, pre-compute distances from obstacles in the map (from each map cell)
-    distances = compute_distances(map_spaces, occ_spaces)
-    max_dist = np.max(distances)
-    sigma_dist = np.std(distances)
-    print("max_dist:", max_dist, "sigma_dist:", sigma_dist)
-    distance_grid = distances.reshape(grid_map.shape)
+    p_gridmap, distance_grid = precompute_likelihood_field(grid_map)
     
-    # the probability gridmap can be used as a look-up table during localization
-    p_gridmap = precompute_p_hit_map(distance_grid, max_dist, sigma_dist) 
-    
+    # visualize the likelihood fields
     # fig, ax = plt.subplots()
     # plot_likelihood_fields(p_gridmap, ax=ax)
     # fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
     # ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
-    # # fig.savefig("likelihood_field_sigma_dist.png")
     # plt.show()
 
     # Initialize the PF
@@ -297,15 +286,15 @@ def main():
         eval_gux=eval_gux,
         resampling_fn=systematic_resample,
         boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
-        N=2000,
+        N=500,
     )
 
     pf.mu = np.array([19, 2, 2*np.pi/3])  # initial x, y, theta of the robot
-    pf.Sigma = np.diag([0.001, 0.001, 0.01])   # initial covariance matrix
+    pf.Sigma = np.diag([0.01, 0.01, 0.01])   # initial covariance matrix
     
 
     # initialize particles using the gridmap using the free spaces list
-    init_particles_dist = "uniform_free_spaces"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
+    init_particles_dist = "uniform_rejection"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
     # method 1: use map pre-computed index list of free spaces
     if init_particles_dist == "uniform_free_spaces":
         pf.initialize_particles(
