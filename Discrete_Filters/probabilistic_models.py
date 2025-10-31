@@ -151,6 +151,7 @@ def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid,
     max_dist = np.max(distances) # max distance in the distance map
     sigma_dist = np.std(distances) # use std of the distance map as sigma
     p_max_dist = compute_p_hit_dist(max_dist, max_dist, sigma_dist) # max distance prob
+
     p_rand = 1.0 / z_max # uniform random component
     step_angle = fov/num_rays # step angle between rays
 
@@ -179,7 +180,7 @@ def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid,
 
             # check if endpoint is inside the map limits
             x, y = int(target_x), int(target_y)
-            if x>=0 and y>=0 and x<distances.shape[0] and y<distances.shape[1] and p_hit_grid[x, y]>0:
+            if x>=0 and y>=0 and x<distances.shape[0] and y<distances.shape[1] and p_hit_grid[x, y]>p_max_dist:
                 # Calculate Gaussian hit mode probability
                 # p_hit_k = compute_p_hit_dist(distances[x, y], max_dist=max_dist, sigma=sigma_dist)
                 p_hit_k = p_hit_grid[x, y]
@@ -251,6 +252,7 @@ def likelihood_field_laser_model_pf_np(
         & (x_idx < distances.shape[0])
         & (y_idx < distances.shape[1])
         & (z_points[None, :] < z_max)
+        & (p_hit_grid[x_idx, y_idx]>p_max_dist)
     )
 
     # Initialize with p_max_dist (for invalid endpoints)

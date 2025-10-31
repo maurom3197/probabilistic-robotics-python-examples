@@ -1,6 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def normalize_angle(theta):
+    """
+    Normalize angles between [-pi, pi)
+    """
+    theta = theta % (2 * np.pi)  # force in range [0, 2 pi)
+    if np.isscalar(theta):
+        if theta > np.pi:  # move to [-pi, pi)
+            theta -= 2 * np.pi
+    else:
+        theta_ = theta.copy()
+        theta_[theta>np.pi] -= 2 * np.pi
+        return theta_
+    
+    return theta
+
 # Exponential Function
 def exponential(x, _lambda):
     return _lambda * np.exp(-1 * _lambda * x)
@@ -172,22 +187,24 @@ def bresenham(x0, y0, x1, y1, map):
 
     while (True):
         # check if obstacle encountered or ray reach end of map
-        print(x0, y0)
         if x0 < 0.:
             obst = 0, y0
             break
-        elif x0 > map.shape[0]: # check if map border reached
-            obst = round(x0), y0
+        elif x0 >= map.shape[0]: # check if map border reached
+            obst = x0, y0
             break
         elif y0 < 0.:
             obst = x0, 0
             break
-        elif y0 > map.shape[1]:
-            obst = x0, round(y0)
+        elif y0 >= map.shape[1]:
+            obst = x0, y0
             break
-        elif map[round(x0), round(y0)]==1 or ((x0==x1) and (y0==y1)):
+        # elif map[int(x0-1), int(y0-1)]==1 or map[int(x0), int(y0)]==1 or map[int(x0-1), int(y0)]==1 or map[int(x0), int(y0-1)]==1 or ((x0==x1) and (y0==y1)):
+        #     obst = [x0, y0]
+        #     print("obst", obst)
+        #     break
+        elif map[int(x0), int(y0)]==1 or ((x0==x1) and (y0==y1)):
             obst = [x0, y0]
-            print("obst", obst)
             break
 
         e2 = 2*err

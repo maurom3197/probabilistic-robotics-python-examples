@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Mapping.gridmap_utils import get_map, plot_gridmap
-from Sensors_Models.utils import bresenham
+from Sensors_Models.utils import bresenham, normalize_angle
 
 # ray-casting algorithm
 def cast_rays(map, robot_pose, num_rays, fov, z_max):
@@ -14,7 +14,7 @@ def cast_rays(map, robot_pose, num_rays, fov, z_max):
     robot_x, robot_y, robot_angle = robot_pose[:]
 
     # define left most angle of FOV and step angle
-    start_angle = robot_angle + fov/2
+    start_angle = robot_angle - fov/2
     step_angle = fov/num_rays
     
     end_points = np.zeros((num_rays, 2))
@@ -25,6 +25,7 @@ def cast_rays(map, robot_pose, num_rays, fov, z_max):
         # cast ray step by step
         length = 0.25
         while(True):
+            start_angle = normalize_angle(start_angle)
             # get ray target coordinates
             target_x = robot_x + math.cos(start_angle) * length
             target_y = robot_y + math.sin(start_angle) * length
@@ -55,11 +56,11 @@ def cast_rays(map, robot_pose, num_rays, fov, z_max):
                 z_star[i] = math.dist([target_x, target_y], [robot_x, robot_y])
                 break
 
-            length += 0.05
+            length += 0.1
         # increment angle by a single step
-        start_angle -= step_angle
+        start_angle += step_angle
 
-    return end_points[::-1], z_star[::-1]
+    return end_points, z_star
 
 
 def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
@@ -70,7 +71,7 @@ def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
     robot_x, robot_y, robot_angle = robot_pose[:]
 
     # define left most angle of FOV and step angle
-    start_angle = robot_angle + fov/2
+    start_angle = robot_angle - fov/2
     step_angle = fov/num_rays
     
     end_points = np.zeros((num_rays, 2))
@@ -79,20 +80,21 @@ def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
     # loop over casted rays
     for i in range(num_rays):
         # cast ray step by step
-
+        start_angle = normalize_angle(start_angle)
         # get ray target coordinates
-        target_x = int(round(robot_x + math.cos(start_angle) * z_max))
-        target_y = int(round(robot_y + math.sin(start_angle) * z_max))
+        target_x = robot_x + math.cos(start_angle) * z_max
+        target_y = robot_y + math.sin(start_angle) * z_max
+        print("targets: ", target_x, target_y)
 
-        target_x, target_y = bresenham(int(round(robot_x)), int(round(robot_y)), target_x, target_y, map)
+        target_x, target_y = bresenham(robot_x, robot_y, target_x, target_y, map)
         
         end_points[i, :] = target_x, target_y
         z_star[i] = math.dist([target_x, target_y], [robot_x, robot_y])
 
         # increment angle by a single step
-        start_angle -= step_angle
+        start_angle += step_angle
 
-    return end_points[::-1], z_star[::-1]
+    return end_points, z_star
 
 def plot_ray_endpoints(map_size, end_points, robot_pose, ax=None):
     if ax is None:
@@ -120,18 +122,18 @@ def main():
     ###########################################################
 
     # global constants
-    map_path = '2D_maps/map0.png'
+    map_path = '2D_maps/map3.png'
 
-    xy_reso = 2
+    xy_reso = 3
     map, grid_map = get_map(map_path, xy_reso)
     # print(grid_map)
-    fov = math.pi / 4
-    num_rays = 16
+    fov = 2*math.pi 
+    num_rays = 12
 
-    robot_pose = np.array([8, 12, -1*math.pi/3])
-    z_max = 16.0
+    robot_pose = np.array([6, 13, math.pi/2])  # [x, y, theta] in map coordinates
+    z_max = 10.0
 
-    use_bresenham = True
+    use_bresenham = False
 
     ###########################################################
 

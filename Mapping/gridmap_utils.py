@@ -115,7 +115,7 @@ def plot_gridmap(map, robot_pose=None, ax=None):
         1.0:           'black'     # occupied space
     }
     cmap = colors.ListedColormap([cmap[key] for key in sorted(cmap.keys())])
-    print("Colormap:", cmap.colors)
+    # print("Colormap:", cmap.colors)
 
     pc = ax.pcolor(map[::-1], cmap=cmap, edgecolors='k', linewidths=0.8)
 
