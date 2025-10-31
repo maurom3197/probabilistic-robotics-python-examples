@@ -1,6 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def normalize_angle(theta):
+    """
+    Normalize angles between [-pi, pi)
+    """
+    theta = theta % (2 * np.pi)  # force in range [0, 2 pi)
+    if np.isscalar(theta):
+        if theta > np.pi:  # move to [-pi, pi)
+            theta -= 2 * np.pi
+    else:
+        theta_ = theta.copy()
+        theta_[theta>np.pi] -= 2 * np.pi
+        return theta_
+    
+    return theta
+
 # Exponential Function
 def exponential(x, _lambda):
     return _lambda * np.exp(-1 * _lambda * x)
@@ -10,7 +25,7 @@ def gaussian(x, mu, sigma):
     return (1.0 / (np.sqrt(2*np.pi) * sigma)) * np.exp(-0.5 * ((x - mu) / sigma)**2)
 
 # Normalized Gaussian pdf
-def compute_p_hit(dist, max_dist, sigma):
+def compute_p_hit_dist(dist, max_dist, sigma):
     '''
     Compute the hit probability p_hit for a given distance measurement.
     Args:
@@ -28,6 +43,35 @@ def compute_p_hit(dist, max_dist, sigma):
 
     p_hit = gaussian(dist, 0., sigma)*normalize_hit
 
+    return p_hit
+
+# Vectorized probabilistic beam model
+def precompute_p_hit_map(distances, max_dist=None, sigma=1.0):
+    """
+    Vectorized probabilistic beam model.
+    Supports scalar or ndarray inputs for distances (must be broadcastable).
+    
+    Args:
+        dist:     observed distances measurement(s), ndarray or float
+        z_max:    max range (scalar)
+        sigma:    std dev for hit Gaussian
+
+    Returns:
+        p_hit (hit prob)
+    """
+    dist_flat = np.asarray(distances.ravel())
+
+    if max_dist is None:
+        max_dist = np.max(dist_flat)
+    
+    # --- Hit mode normalization ---
+    j = np.arange(int(max_dist))
+    normalize_hit = np.sum(gaussian(j[:, None], dist_flat, sigma), axis=0)
+    normalize_hit = normalize_hit.reshape(distances.shape)
+    normalize_hit = np.where(normalize_hit > 0, 1.0 / normalize_hit, 1.0)
+
+    # Hit probability
+    p_hit = gaussian(distances, np.zeros_like(distances), sigma) * normalize_hit
     return p_hit
 
 # Vectorized probabilistic beam model
@@ -143,22 +187,24 @@ def bresenham(x0, y0, x1, y1, map):
 
     while (True):
         # check if obstacle encountered or ray reach end of map
-        print(x0, y0)
         if x0 < 0.:
             obst = 0, y0
             break
-        elif x0 > map.shape[0]: # check if map border reached
-            obst = round(x0), y0
+        elif x0 >= map.shape[0]: # check if map border reached
+            obst = x0, y0
             break
         elif y0 < 0.:
             obst = x0, 0
             break
-        elif y0 > map.shape[1]:
-            obst = x0, round(y0)
+        elif y0 >= map.shape[1]:
+            obst = x0, y0
             break
-        elif map[round(x0), round(y0)]==1 or ((x0==x1) and (y0==y1)):
+        # elif map[int(x0-1), int(y0-1)]==1 or map[int(x0), int(y0)]==1 or map[int(x0-1), int(y0)]==1 or map[int(x0), int(y0-1)]==1 or ((x0==x1) and (y0==y1)):
+        #     obst = [x0, y0]
+        #     print("obst", obst)
+        #     break
+        elif map[int(x0), int(y0)]==1 or ((x0==x1) and (y0==y1)):
             obst = [x0, y0]
-            print("obst", obst)
             break
 
         e2 = 2*err

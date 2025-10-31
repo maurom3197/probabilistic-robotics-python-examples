@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from  matplotlib.patches import Arc
-from Sensors_Models.utils import compute_p_hit
+from Sensors_Models.utils import compute_p_hit_dist
 arrow = u'$\u2191$'
 
 def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fov=math.pi/2):
@@ -39,7 +39,7 @@ def landmark_model_prob(z, landmark, robot_pose, max_range, fov, sigma):
 
     r_hat = math.dist([x, y], [m_x, m_y])
     phi_hat = math.atan2(m_y - y, m_x - x) - theta
-    p = compute_p_hit(z[0] - r_hat, max_range, sigma_r) * compute_p_hit(z[1] - phi_hat, fov/2, sigma_phi)
+    p = compute_p_hit_dist(z[0] - r_hat, max_range, sigma_r) * compute_p_hit_dist(z[1] - phi_hat, fov/2, sigma_phi)
 
     return p
 
@@ -87,7 +87,7 @@ def plot_sampled_poses(robot_pose, z, landmark, sigma):
     plt.xlabel("x-position [m]")
     plt.ylabel("y-position [m]")
     plt.title("Landmark Model Pose Sampling")
-    plt.savefig("landmark_model_sampling.pdf")
+    # plt.savefig("landmark_model_sampling.pdf")
     plt.show()
 
 

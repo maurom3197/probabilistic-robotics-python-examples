@@ -66,7 +66,7 @@ def main():
     ### Generate data sampling from p(z|x,m)  ####
     ##############################################
     else:
-        mix_density, sigma, lamb_short = [0.7, 0.2, 0.05, 0.05], 1.0, 0.9
+        mix_density, sigma, lamb_short = [0.8, 0.1, 0.05, 0.05], 1.0, 0.9
 
         for i in range(data_num):
             z = sample_from_z_dist(z_star[0], z_max, mix_density, sigma, lamb_short) 

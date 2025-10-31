@@ -3,9 +3,9 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap, plot_gridmap_plt
+from Mapping.gridmap_utils import get_map, plot_gridmap, normalize_angle
 from Sensors_Models.ray_casting import cast_rays, plot_ray_endpoints
-from Sensors_Models.utils import evaluate_range_beam_dist_array
+
 
 def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays):
     '''
@@ -24,6 +24,7 @@ def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov,
 
     r = np.round(np.sqrt((m_i[0] - x_t[0])**2 + (m_i[1] - x_t[1])**2), decimals=2)
     phi = math.atan2(m_i[1] - x_t[1], m_i[0] - x_t[0]) - x_t[2]
+    phi = normalize_angle(phi)
     # find the k-th ray that contain the m_i
     k = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
     z_t_k = z_t[k]  # range measurement of the k-th ray
@@ -34,7 +35,7 @@ def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov,
     if r > min(z_max, z_t_k + alpha / 2) or abs(phi - phi_k) > beta / 2:
         # print(f"Cell {m_i} is unknown")
         return log(0.5)  # unknown cell
-    if z_t_k < z_max  and abs(r - z_t_k) < (0.5 * alpha + 0.01): 
+    if z_t_k < z_max  and abs(r - z_t_k) < (0.5 * alpha): 
         # print(f"Cell {m_i} is occupied")
         return log(0.7) # occupied cell
     if r <= z_t_k:
@@ -65,6 +66,7 @@ def algorithm_occupancy_grid_mapping(l_t, x_t, z_t, alpha, beta, z_max, fov, num
             # if m_i in the perceptuion field of the sensor:
             r = np.round(np.sqrt((m_i[0] - x_t[0])**2 + (m_i[1] - x_t[1])**2), decimals=2)
             phi = math.atan2(m_i[1] - x_t[1], m_i[0] - x_t[0]) - x_t[2]
+            phi = normalize_angle(phi)
             if r <= z_max and abs(phi) <= fov / 2:
                 # update log-odds value
                 l_t1[i, j] = l_t[i, j] + algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov, num_rays) - l0
@@ -89,12 +91,12 @@ def main():
     PLOT_TIME_STEPS = True
 
     # Range sensor parameters
-    fov = math.pi # Sensor Field of View
+    fov = 2*math.pi # Sensor Field of View
     num_rays = 60 # Number of rays
-    z_max = 10.0 # Max range
+    z_max = 12.0 # Max range
 
     # Inverse sensor model parameters for laser range finder
-    alpha = 1.0 # width of a cell
+    alpha = 1.00 # width of a cell
     beta = fov / num_rays  # angle of a ray
     print(f"alpha: {alpha}, beta: {math.degrees(beta)}")
 
@@ -130,8 +132,9 @@ def main():
         if PLOT_TIME_STEPS:
             if t % 60 == 0:
                 print(f"Time step: {t}")
-                plot_gridmap_plt(occ_grid_map, 'Map Inverse Range Model', robot_poses[t])  
-                plot_ray_endpoints(occ_grid_map.shape, ray_end_points[t], robot_poses[t])
+                fig1, ax1 = plt.subplots()
+                plot_gridmap(occ_grid_map, robot_poses[t], ax1)  
+                plot_ray_endpoints(occ_grid_map.shape, ray_end_points[t], robot_poses[t], ax1)
                 plt.pause(0.05)
                 plt.show()
 
@@ -140,7 +143,6 @@ def main():
     #### Final plot of the original and the obtained maps ######
     fig, ax = plt.subplots(1, 2, figsize=(11, 5))
     plot_gridmap(grid_map, robot_pose0, ax=ax[0]) 
-    ax[0].axis("equal")
     ax[0].set_title("Original Gridmap")
     pc = plot_gridmap(occ_grid_map, ax=ax[1])    
     ax[1].set_title('Inverse Range Model')

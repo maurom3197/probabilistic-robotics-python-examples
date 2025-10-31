@@ -3,7 +3,7 @@ from math import log
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Mapping.gridmap_utils import get_map, plot_gridmap
+from Mapping.gridmap_utils import get_map, plot_gridmap, normalize_angle
 from Sensors_Models.utils import evaluate_range_beam_dist_array as sensor_model
 from Sensors_Models.ray_casting import cast_rays
 from Mapping.hill_climbing import hill_climb_binary, objective_MAP_occupancy_grid_mapping_hill_climb
@@ -44,11 +44,12 @@ def algorithm_MAP_occupancy_grid_mapping(map, robot_poses, ranges, z_max, num_ra
                     # if m_i in the perceptuion field of the sensor:
                     r = np.round(np.sqrt((m_i[0] - x_t[0])**2 + (m_i[1] - x_t[1])**2), decimals=2)
                     phi = math.atan2(m_i[1] - x_t[1], m_i[0] - x_t[0]) - x_t[2]
+                    phi = normalize_angle(phi)
 
                     if r > z_max or abs(phi) > fov / 2:
                         continue
 
-                    # the  ray interesects the cell m_i
+                    # the ray interesects the cell m_i
                     idx = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
                     z_t_k = z[idx]  # range measurement of the k-th ray
                     z_star = z_star[idx]  # expected range measurement of the k-th ray
@@ -84,7 +85,7 @@ def main():
     z_max = 10.0 # Max range
 
     # Solution method
-    use_hill_climbing = False  # if False use the direct MAP estimation
+    use_hill_climbing = True  # if False use the direct MAP estimation
 
     ######################################################################
     ### simulate Laser range with ray casting + Lidar ranges some noise ##

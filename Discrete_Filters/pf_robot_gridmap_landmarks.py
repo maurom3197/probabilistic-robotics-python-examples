@@ -1,15 +1,15 @@
 import math
 import numpy as np
+from Mapping.gridmap_utils import compute_map_occ, plot_gridmap, get_map
 
 from Discrete_Filters.utils import (
     residual, 
     initial_uniform_particles_gridmap, initial_uniform_particles_gridmap_from_free_spaces, initial_gaussian_particles,
     state_mean, 
     simple_resample, stratified_resample, systematic_resample, residual_resample,
-    get_map, compute_map_occ,
 )
 
-from Discrete_Filters.plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap, plot_gridmap
+from Discrete_Filters.plot_utils import plot_initial_particles_gridmap, plot_particles_gridmap
 import matplotlib.pyplot as plt
 from Discrete_Filters.pf import RobotPF
 
@@ -219,7 +219,7 @@ def main():
     # print(grid_map)
     max_x = grid_map.shape[0]
     max_y = grid_map.shape[1]
-    occ_spaces, free_spaces, map_cells = compute_map_occ(grid_map)
+    occ_spaces, free_spaces, _, map_cells = compute_map_occ(grid_map)
 
     # Initialize the PF
     pf = RobotPF(
@@ -235,18 +235,22 @@ def main():
     pf.Sigma = np.diag([0.1, 0.1, 0.1])   # initial covariance matrix
     
     # initialize particles using the gridmap using the free spaces list
+    init_particles_dist = "uniform_rejection"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
     # method 1: use map pre-computed index list of free spaces
-    pf.initialize_particles(
-        initial_dist_fn=initial_uniform_particles_gridmap_from_free_spaces, 
-        initial_dist_args=(pf.dim_x, free_spaces))
+    if init_particles_dist == "uniform_free_spaces":
+        pf.initialize_particles(
+            initial_dist_fn=initial_uniform_particles_gridmap_from_free_spaces, 
+            initial_dist_args=(pf.dim_x, free_spaces))
     # method 2: use rejection sampling
-    # pf.initialize_particles(
-    #     initial_dist_fn=initial_uniform_particles_gridmap, 
-    #     initial_dist_args=(pf.dim_x, pf.boundaries, grid_map))
-    # method 3: with apriori information on the initial robot pose use a gaussian
-    # pf.initialize_particles(
-    #     initial_dist_fn=initial_gaussian_particles, 
-    #     initial_dist_args=(pf.dim_x, pf.mu, [3.0, 3.0, math.pi/2], 2, grid_map))
+    elif init_particles_dist == "uniform_rejection":
+        pf.initialize_particles(
+            initial_dist_fn=initial_uniform_particles_gridmap, 
+            initial_dist_args=(pf.dim_x, pf.boundaries, grid_map))
+    # method 3: use a gaussian with apriori information on the initial robot pose 
+    elif init_particles_dist == "gaussian":
+        pf.initialize_particles(
+            initial_dist_fn=initial_gaussian_particles, 
+            initial_dist_args=(pf.dim_x, pf.mu, [3.0, 3.0, math.pi/2], 2, grid_map))
 
     run_localization_sim(
         pf,

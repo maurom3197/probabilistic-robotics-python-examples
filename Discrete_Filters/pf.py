@@ -116,8 +116,12 @@ class RobotPF:
         z_hat = np.zeros((self.N, 2))
 
         z_hat = eval_hx(self.particles, *hx_args)
-        # simplification assumes variance is invariant to world projection
-        prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+        # compute the probability of the measure according to the probabilistic sensor model
+        if len(hx_args) > 2: # likelihood field model
+            prob = z_hat
+        else:                # landmark range bearing model
+            prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+
         self.weights *= np.prod(prob, axis=1)
 
 
@@ -168,6 +172,7 @@ class RobotPF:
         """
         Estimate the state of the robot
         """
+        # get indexes of the resampled particles
         indexes = resampling_fn(*resampling_args)
         # resample according to indexes
         self.particles[:] = self.particles[indexes]
