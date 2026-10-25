@@ -30,14 +30,16 @@ def cast_rays(map, robot_pose, num_rays, fov, z_max):
             target_x = robot_x + math.cos(start_angle) * length
             target_y = robot_y + math.sin(start_angle) * length
             
-            # ray reach end of map
-            if target_x < 0. or target_x > map.shape[0]: # check if map border reached
-                end_points[i, :] = round(target_x), target_y
-                z_star[i] = math.dist([round(target_x), target_y], [robot_x, robot_y])
-                break
-            elif target_y < 0. or target_y > map.shape[1]:
-                end_points[i, :] = target_x, round(target_y)
-                z_star[i] = math.dist([target_x, round(target_y)], [robot_x, robot_y])
+            # Leaving the map does not represent hitting an obstacle.
+            if (
+                target_x < 0.0 or target_x >= map.shape[0]
+                or target_y < 0.0 or target_y >= map.shape[1]
+            ):
+                z_star[i] = z_max
+                end_points[i, :] = (
+                    robot_x + math.cos(start_angle) * z_max,
+                    robot_y + math.sin(start_angle) * z_max,
+                )
                 break
         
             # convert target X, Y coordinate to map col, row

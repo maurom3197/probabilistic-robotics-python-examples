@@ -84,7 +84,7 @@ def compute_distances(end_points, obst_cells):
 
     return distances
 
-def precompute_likelihood_field(grid_map, sigma=None, max_dist=None):
+def precompute_likelihood_field(grid_map, sigma=1.0, max_dist=None):
     """""
     Pre-compute the likelihood field for the entire map
     """""
@@ -94,8 +94,6 @@ def precompute_likelihood_field(grid_map, sigma=None, max_dist=None):
 
     if not max_dist:
         max_dist = np.max(distances)
-    if not sigma:
-        sigma = np.std(distances)
 
     # handle unknown cells in the gridmap (if any)
     gridmap_values = np.unique(grid_map)

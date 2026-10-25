@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 import scipy.stats
+from scipy.special import logsumexp
 
 class RobotPF:
     def __init__(
@@ -61,7 +62,8 @@ class RobotPF:
         else:
             self.particles = initial_dist_fn(self.N, *initial_dist_args)
         
-        self.weights = np.ones(self.N) / self.N  # weights
+        self.weights = np.full(self.N, 1.0 / self.N)
+        self.log_weights = np.full(self.N, -np.log(self.N))
 
     
     def predict(self, u, sigma_u, g_extra_args=()):
@@ -111,26 +113,50 @@ class RobotPF:
         if np.isscalar(z):
             z = np.asarray([z], float)
 
-        sigma_z = sigma_z * 3.0
         # Evaluate the expected measurement and compute the residual, then update the state prediction
-        z_hat = np.zeros((self.N, 2))
-
+  
         z_hat = eval_hx(self.particles, *hx_args)
         # compute the probability of the measure according to the probabilistic sensor model
         if len(hx_args) > 2: # likelihood field model
-            prob = z_hat
+            prob = np.asarray(z_hat, dtype=float)
+            if np.any(~np.isfinite(prob)) or np.any(prob < 0):
+                raise ValueError("Invalid laser likelihood")
+
+            log_prob = np.log(prob)
+
         else:                # landmark range bearing model
             prob = scipy.stats.norm(z_hat, sigma_z).pdf(z)
+            log_prob = scipy.stats.norm.logpdf(
+            z, loc=z_hat, scale=3.0 * sigma_z)
 
         self.weights *= np.prod(prob, axis=1)
+        self.log_weights += np.sum(log_prob, axis=1)
+        
+        # return prob, log_prob
 
 
     def normalize_weights(self):
         # particles far from a measurement will give us 0.0 for a probability
         # due to floating point limits. Once we hit zero we can never recover,
         # so add some small nonzero value to all points.
-        self.weights += 1.e-10
-        self.weights /= sum(self.weights) # normalize
+        # if not beam_probs:
+        #     self.weights += 1.e-30
+        #     self.weights /= sum(self.weights) # normalize
+        # else:
+        #     log_weights = np.log(self.weights) + np.sum(np.log(beam_probs), axis=1)
+        #     log_weights -= np.max(log_weights)
+        #     weights = np.exp(log_weights)
+        #     self.weights /= sum(weights) # normalize
+
+        log_total = logsumexp(self.log_weights)
+
+        if not np.isfinite(log_total):
+            raise ValueError(
+                "No particle has a valid measurement likelihood"
+            )
+
+        self.log_weights -= log_total
+        self.weights = np.exp(self.log_weights)
         # print("Weights normalized: ", self.weights)
 
 
@@ -153,7 +179,7 @@ class RobotPF:
 
         else:
             # if the state include special cases as angles, use a custom mean function
-            mu = mean_fn(self.particles, self.weights)
+            mu = mean_fn(self.particles, self.weights,**kwargs)
 
         if residual_fn is np.subtract or residual_fn is None:
             Sigma = np.average((self.particles - mu)**2, axis=0, weights=self.weights)
@@ -178,3 +204,6 @@ class RobotPF:
         self.particles[:] = self.particles[indexes]
         self.weights.resize(len(self.particles))
         self.weights.fill(1.0 / len(self.weights))
+        self.log_weights = np.full(
+            len(self.weights), -np.log(len(self.weights))
+        )
