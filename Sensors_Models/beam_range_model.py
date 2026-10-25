@@ -2,16 +2,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from Sensors_Models.generate_beam_data import plot_sampling_dist, sample_from_z_dist
-from Sensors_Models.utils import gaussian
+from Sensors_Models.utils import compute_p_hit_z
 
 def evaluate_range_beam_distribution(z, z_star, z_max, _mix_density, _sigma, _lamb_short):
     # Calculate hit mode probability
-    normalize_hit = 0.0
-    for j in range(int(z_max)):
-        normalize_hit += gaussian(j, z_star, _sigma)
-    normalize_hit = 1. / normalize_hit
-
-    p_hit = gaussian(z, z_star, _sigma) * normalize_hit
+    p_hit = compute_p_hit_z(z, z_star, z_max, sigma=_sigma)
 
     # Calculate short mode probability
     if z <= z_star:
@@ -74,7 +69,7 @@ def ML_params_estimator(input_data, sensor_max, data_num):
         _cal_sigma_tmp_sum = 0.0
 
         for i in range(data_num):
-            z_star = input_data[0, i]  # true range from ray casting (in pseudo code : z_i^*)
+            z_star = input_data[0, i]  # expected range from ray casting (in pseudo code : z_i^*)
             z = input_data[1, i]  # measurement (in pseudo code : z_i)
 
             p_hit, p_short, p_max, p_rand, p, p_z = evaluate_range_beam_distribution(z, z_star, 

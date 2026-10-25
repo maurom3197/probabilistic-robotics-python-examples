@@ -33,8 +33,7 @@ def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
 
 def find_endpoints(robot_pose, z, num_rays, fov):
     """""
-    Check directly the presence of obstacles in Line of Sight in the FOV of the range sensor
-    Compute the endpoint map coordinate and the associated distance z_star
+    Compute the endpoint map coordinates of the perceived obstacles for a given robot pose and laser ranges
     """""
     robot_x, robot_y, robot_angle = robot_pose[:]
 
@@ -156,18 +155,20 @@ def plot_ray_prob(map_size, end_points, robot_pose, p_z, ax=None):
     
 def main():
     # global constants
-    map_path = '2D_maps/map31.bmp'
+    map_path = '2D_maps/map31_grey.png'
 
     xy_reso = 4
     _, grid_map = get_map(map_path, xy_reso)
     # print(grid_map)
     occ_spaces, free_spaces, unknown, map_spaces = compute_map_occ(grid_map)
     
+    # sensor parameters
     fov = math.pi / 4
     num_rays = 12
-
-    robot_pose = np.array([12, 9, 2*math.pi/3])
     z_max = 8.0
+
+    # robot pose
+    robot_pose = np.array([8, 11, 0])  # [x, y, theta] in map coordinates
 
     ###########################################################
     #### simulate Laser range with ray casting + some noise ###
@@ -180,17 +181,24 @@ def main():
     z = rng + np.random.normal(0, 0.1**2, size=1).item() + np.random.binomial(2, 0.001, 1).item() + 10*np.random.binomial(2, 0.001, 1).item()
     z = np.clip(z, 0., z_max)
     print("Noisy laser ranges:", z)
+    
+
+    ############################################################
+    # compute distances of the perceived endpoints to the nearest obstacle in the map
+    ############################################################
+
     end_points_z = find_endpoints(robot_pose, z, num_rays, fov)
     print("Noisy end_points_z:", end_points_z)
-
-    # compute distances of the perceived end points to the nearest obstacle in the map
     distances_z = compute_distances(end_points_z, occ_spaces)
     # print("Distances to nearest obstacles:", distances_z)
 
+    ####################################################
     # Evaluate the likelihood field model
+    ####################################################
+
     mix_density, sigma = [0.9, 0.05, 0.05], 0.75
     p_z_z = evaluate_prob(distances_z, z, z_max, mix_density, sigma)
-    print("Probabilities of the laser ranges:", p_z_z)
+    print("Probabilities of the laser ranges - LF:", p_z_z)
 
     # visualize the results
     fig, ax = plt.subplots()

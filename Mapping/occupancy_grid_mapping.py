@@ -29,18 +29,17 @@ def algorithm_inverse_range_sensor_model(m_i, x_t, z_t, alpha, beta, z_max, fov,
     k = int(round((phi + fov / 2) / (fov / (num_rays - 1)))) 
     z_t_k = z_t[k]  # range measurement of the k-th ray
     phi_k = -fov / 2 + k * (fov / (num_rays - 1))  # angle of the k-th ray
-    # print(f"Cell {m_i} is in the perception field of the sensor, r: {r}, phi: {round(math.degrees(phi))}, k: {k}, z_t_k: {z_t_k}, phi_k: {round(math.degrees(phi_k))}")
     
     # apply the inverse sensor model
     if r > min(z_max, z_t_k + alpha / 2) or abs(phi - phi_k) > beta / 2:
-        # print(f"Cell {m_i} is unknown")
         return log(0.5)  # unknown cell
+    
     if z_t_k < z_max  and abs(r - z_t_k) < (0.5 * alpha): 
-        # print(f"Cell {m_i} is occupied")
         return log(0.7) # occupied cell
+    
     if r <= z_t_k:
-        # print(f"Cell {m_i} is free")
         return log(0.3) # free cell
+    
     return log(0.5)  # unknown
 
 def algorithm_occupancy_grid_mapping(l_t, x_t, z_t, alpha, beta, z_max, fov, num_rays):
@@ -131,7 +130,7 @@ def main():
 
         if PLOT_TIME_STEPS:
             if t % 60 == 0:
-                print(f"Time step: {t}")
+                # print(f"Time step: {t}")
                 fig1, ax1 = plt.subplots()
                 plot_gridmap(occ_grid_map, robot_poses[t], ax1)  
                 plot_ray_endpoints(occ_grid_map.shape, ray_end_points[t], robot_poses[t], ax1)
