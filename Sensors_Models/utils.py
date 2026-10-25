@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 def normalize_angle(theta):
     """
@@ -24,31 +25,50 @@ def exponential(x, _lambda):
 def gaussian(x, mu, sigma):
     return (1.0 / (np.sqrt(2*np.pi) * sigma)) * np.exp(-0.5 * ((x - mu) / sigma)**2)
 
-# Normalized Gaussian pdf
+def compute_p_hit_z(z, z_star, z_max, sigma):
+    """
+    Compute the hit probability p_hit for a given distance measurement using scipy.
+    Args:
+        z: observed distance measurement
+        z_star: expected distance measurement
+        z_max: maximum measurable distance
+        sigma: standard deviation of the Gaussian noise
+    Returns:
+        p_hit: normalized hit probability
+    """
+    # Normalize the Gaussian PDF with the CDF probability computed over [0, z_max]
+    # use scipy.stats.norm for the Gaussian PDF and CDF
+    normalize_hit = norm.cdf(z_max, loc=z_star, scale=sigma) - norm.cdf(0, loc=z_star, scale=sigma)
+    normalize_hit = 1. / normalize_hit
+
+    p_hit = norm.pdf(z, loc=z_star, scale=sigma) * normalize_hit
+
+    return p_hit
+
 def compute_p_hit_dist(dist, max_dist, sigma):
-    '''
-    Compute the hit probability p_hit for a given distance measurement.
+    """
+    Compute the hit probability p_hit for a given distance measurement using scipy.
     Args:
         dist: observed distance measurement
         max_dist: maximum measurable distance
         sigma: standard deviation of the Gaussian noise
     Returns:
         p_hit: normalized hit probability
-    '''
-    # Normalize the Gaussian over [0, max_dist]
-    normalize_hit = 1e-9
-    for j in range(round(max_dist)):
-        normalize_hit += gaussian(j, 0., sigma)
+    """
+
+    # Normalize the Gaussian PDF with the CDF probability computed over [0, max_dist]
+    normalize_hit = norm.cdf(max_dist, loc=0, scale=sigma) - norm.cdf(0, loc=0, scale=sigma)
     normalize_hit = 1. / normalize_hit
 
-    p_hit = gaussian(dist, 0., sigma)*normalize_hit
+    p_hit = norm.pdf(dist, loc=0, scale=sigma) * normalize_hit
+    p_hit = np.where((dist > max_dist) | (dist < 0.0), 0.0, p_hit)  # Set p_hit to 0 for distances greater than max_dist or negative anomalies
 
     return p_hit
 
-# Vectorized probabilistic beam model
+# Vectorized probabilistic likelihood field model
 def precompute_p_hit_map(distances, max_dist=None, sigma=1.0):
     """
-    Vectorized probabilistic beam model.
+    Vectorized probabilistic model for computing gaussian hit probabilities of distances for likelihood fields over a grid map.
     Supports scalar or ndarray inputs for distances (must be broadcastable).
     
     Args:
@@ -64,14 +84,14 @@ def precompute_p_hit_map(distances, max_dist=None, sigma=1.0):
     if max_dist is None:
         max_dist = np.max(dist_flat)
     
-    # --- Hit mode normalization ---
-    j = np.arange(int(max_dist))
-    normalize_hit = np.sum(gaussian(j[:, None], dist_flat, sigma), axis=0)
-    normalize_hit = normalize_hit.reshape(distances.shape)
-    normalize_hit = np.where(normalize_hit > 0, 1.0 / normalize_hit, 1.0)
+    # To compute the hit probability p_hit for a given distance measurement
+    # we need to normalize the Gaussian PDF with the CDF probability computed over [0, max_dist]
+    normalize_hit = norm.cdf(max_dist, loc=0, scale=sigma) - norm.cdf(0, loc=0, scale=sigma)
+    normalize_hit = 1. / normalize_hit
 
     # Hit probability
-    p_hit = gaussian(distances, np.zeros_like(distances), sigma) * normalize_hit
+    p_hit = norm.pdf(distances, loc=np.zeros_like(distances), scale=sigma) * normalize_hit
+    p_hit = np.where((distances > max_dist) | (distances < 0.0), 0.0, p_hit)  # Set p_hit to 0 for distances greater than max_dist or negative anomalies
     return p_hit
 
 # Vectorized probabilistic beam model

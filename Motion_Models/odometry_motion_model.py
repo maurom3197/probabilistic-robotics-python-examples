@@ -1,18 +1,21 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
 import math
 import matplotlib as mpl
 
 arrow = u'$\u2191$'
 
 def sample_normal_distribution(sigma_sqrd):
+    """ Sample from a normal distribution using the sum of uniform distributions."""
     return 0.5 * np.sum(np.random.default_rng().uniform(-np.sqrt(sigma_sqrd), np.sqrt(sigma_sqrd), 12))
 
-def evaluate_sampling_dist(mu, sigma, n_samples, sample_function):
+def evaluate_sampling_dist(mu, sigma, n_samples, sample_function, n_bins=100):
+    """ 
+    Evaluate the sampling distribution by generating samples, 
+    computing mean and std dev, and plotting a histogram. 
+    """
 
-    n_bins = 100
     samples = []
 
     for i in range(n_samples):
@@ -21,16 +24,17 @@ def evaluate_sampling_dist(mu, sigma, n_samples, sample_function):
     print("%30s : mean = %.3f, std_dev = %.3f" % ("Normal", np.mean(samples), np.std(samples)))
 
     count, bins, ignored = plt.hist(samples, n_bins)
-    plt.plot(bins, norm(mu, sigma).pdf(bins), linewidth=2, color='r')
+    # plt.plot(bins, norm(mu, sigma).pdf(bins), linewidth=2, color='r')
     plt.xlim([mu - 5*sigma, mu + 5*sigma])
     plt.title("Normal distribution of samples")
     plt.grid()
-    plt.savefig("gaussian_dist.pdf")
+    # plt.savefig("odometry_model_gaussian_dist.pdf")
     plt.show()
 
 
 def sample_odometry_motion_model(x, u, a):
-    """ Sample odometry motion model.
+    """ 
+    Sample odometry motion model.
     Arguments:
     x -- pose of the robot before moving [x, y, theta]
     u -- odometry reading obtained from the robot [rot1, rot2, trans]
@@ -50,23 +54,22 @@ def sample_odometry_motion_model(x, u, a):
 def main():
     plt.close('all')
     n_samples = 5000
-    n_bins = 100
 
     x = [2, 4, 0]
-    u = [-np.pi/2, 1, 0]
-    a = [0.1, 0.1, 0.01, 0.01] # noise variance: a0 (rot on rot), a1(t on rot), a2 (t on t), a3 (rot on t)
+    u = [-np.pi/2, 1, 0] # odometry cmd: rot1, translation, rot2
+    a = [0.0001, 0.0001, 0.1, 0.3] # noise variance: a0 (rot on rot), a1(t on rot), a2 (t on t), a3 (rot on t)
 
     x_prime = np.zeros([n_samples, 3])
     for i in range(n_samples):
-        x_prime[i,:] = sample_odometry_motion_model(x,u,a)
+        x_prime[i,:] = sample_odometry_motion_model(x, u, a)
 
     ###################################
     ######### Plot x samples ##########
     ###################################
        
-    mu = np.mean(x_prime, axis=0)
-    sigma = np.std(x_prime, axis=0)
-    evaluate_sampling_dist(mu[0], sigma[0], n_samples, np.random.normal)
+    # mu = np.mean(x_prime, axis=0)
+    # sigma = np.std(x_prime, axis=0)
+    # evaluate_sampling_dist(mu[0], sigma[0], n_samples, np.random.normal)
 
     ###################################
     ### Sampling the odometry model ###

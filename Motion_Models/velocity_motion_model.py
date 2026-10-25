@@ -1,18 +1,20 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
 from math import cos, sin, degrees
 import matplotlib as mpl
 
 arrow = u'$\u2191$'
 
 def sample_normal_distribution(sigma_sqrd):
+    """ Sample from a normal distribution using the sum of uniform distributions."""
     return 0.5 * np.sum(np.random.default_rng().uniform(-np.sqrt(sigma_sqrd), np.sqrt(sigma_sqrd), 12))
 
-def evaluate_sampling_dist(mu, sigma, n_samples, sample_function):
-
-    n_bins = 100
+def evaluate_sampling_dist(mu, sigma, n_samples, sample_function, n_bins=100):
+    """ 
+    Evaluate the sampling distribution by generating samples, 
+    computing mean and std dev, and plotting a histogram. 
+    """
     samples = []
 
     for i in range(n_samples):
@@ -21,15 +23,16 @@ def evaluate_sampling_dist(mu, sigma, n_samples, sample_function):
     print("%30s : mean = %.3f, std_dev = %.3f" % ("Normal", np.mean(samples), np.std(samples)))
 
     count, bins, ignored = plt.hist(samples, n_bins)
-    plt.plot(bins, norm(mu, sigma).pdf(bins), linewidth=2, color='r')
+    # plt.plot(bins, norm(mu, sigma).pdf(bins), linewidth=2, color='r')
     plt.xlim([mu - 5*sigma, mu + 5*sigma])
     plt.title("Normal distribution of samples")
     plt.grid()
-    plt.savefig("gaussian_dist.pdf")
+    # plt.savefig("velocity_model_gaussian_dist.pdf")
     plt.show()
 
 def sample_velocity_motion_model(x, u, a, dt):
-    """ Sample velocity motion model.
+    """ 
+    Sample velocity motion model.
     Arguments:
     x -- pose of the robot before moving [x, y, theta]
     u -- velocity reading obtained from the robot [v, w]
@@ -51,11 +54,10 @@ def sample_velocity_motion_model(x, u, a, dt):
 def main():
     plt.close('all')
     n_samples = 5000
-    n_bins = 100
     dt = 0.5
 
-    x = [2, 4, 0]
-    u = [0.8, 0.6]
+    x = [2, 4, 0] # initial pose
+    u = [0.8, 0.6] # velocity command (linear and angular)
     a = [0.001, 0.01, 0.1, 0.2, 0.05, 0.05] # noise variance
 
     x_prime = np.zeros([n_samples, 3])
@@ -86,7 +88,7 @@ def main():
     plt.xlabel("x-position [m]")
     plt.ylabel("y-position [m]")
     plt.title("velocity motion model sampling")
-    plt.savefig("velocity_samples.pdf")
+    # plt.savefig("velocity_samples.pdf")
     plt.show()
 
     ###################################
@@ -129,7 +131,7 @@ def main():
     plt.xlabel("x-position [m]")
     plt.ylabel("y-position [m]")
     plt.title("velocity multiple sampling")
-    plt.savefig("multi_velocity_samples.pdf")
+    # plt.savefig("multi_velocity_samples.pdf")
     plt.show()
 
     plt.close('all')

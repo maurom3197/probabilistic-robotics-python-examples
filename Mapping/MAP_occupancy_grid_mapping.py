@@ -142,6 +142,7 @@ def main():
     fig.suptitle("Occupancy Grid Mapping")
     fig.tight_layout()
     fig.colorbar(pc, ax=ax[1], label='Occupancy Probability', fraction = 0.12, pad=0.04)
+    plt.savefig("MAP_occupancy_grid_mapping_result.png", dpi=300)
     plt.show()
     
     plt.close('all')

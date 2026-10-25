@@ -131,7 +131,7 @@ def plot_gridmap(map, robot_pose=None, ax=None):
     if robot_pose is not None:
         # unpack the first point
         x, y, theta = robot_pose[0], robot_pose[1], robot_pose[2]-math.pi/2
-        print("Robot pose:", x, y, round(math.degrees(theta)))
+        # print("Robot pose:", x, y, round(math.degrees(theta)))
 
         # find the end point
         endx = x - 1.0 * math.sin(theta)

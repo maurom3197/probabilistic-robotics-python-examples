@@ -65,7 +65,7 @@ def cast_rays(map, robot_pose, num_rays, fov, z_max):
 
 def cast_rays_bresenham(map, robot_pose, num_rays, fov, z_max):
     """""
-    Check directly the presence of obstacles in Line of Sight in the FOV of the range sensor
+    Check the presence of obstacles in Line of Sight in the FOV of the range sensor with Bresenham's line algorithm
     Compute the endpoint map coordinate and the associated distance z_star
     """""
     robot_x, robot_y, robot_angle = robot_pose[:]
@@ -127,11 +127,12 @@ def main():
     xy_reso = 3
     map, grid_map = get_map(map_path, xy_reso)
     # print(grid_map)
-    fov = 2*math.pi 
-    num_rays = 12
+    # Define the sensor parameters
+    fov = 2*math.pi # FoV of 360 degrees
+    num_rays = 36 # number of rays to be casted
 
     robot_pose = np.array([6, 13, math.pi/2])  # [x, y, theta] in map coordinates
-    z_max = 10.0
+    z_max = 10.0 # maximum range of the sensor
 
     use_bresenham = False
 
