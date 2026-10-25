@@ -5,8 +5,8 @@
 
 
 <p align="center">
-  <img src="readme_images/landmark_model_sampling.png" alt="Samples from the landmark sensor model" width="400">
-  <img src="readme_images/multi_odometry_samples.png" alt="Odometry samples over multiple motion steps" width="400">
+  <img src=./readme_images/landmark_model_sampling.png alt="Samples from the landmark sensor model" width="400">
+  <img src=./readme_images/multi_odometry_samples.png alt="Odometry samples over multiple motion steps" width="400"/>
 </p>
 
 Python scripts and a notebook for practical, educational examples of algorithms from *Probabilistic Robotics*. The examples simulate robot motion, measurements, localization, mapping, and SLAM.
@@ -24,7 +24,7 @@ Python scripts and a notebook for practical, educational examples of algorithms 
 | `2D_maps/` | Sample map images |
 
 <p align="center">
-  <img src="readme_images/expected_output_odom.png" alt="Expected odometry motion model output" width="650">
+  <img src=./readme_images/expected_output_odom.png alt="Expected odometry motion model output" width="650"/>
 </p>
 
 ## Setup
