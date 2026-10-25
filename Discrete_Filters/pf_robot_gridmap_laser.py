@@ -46,19 +46,20 @@ def run_localization_sim(
     mix_density_lidar,
     distances,
     prob_gridmap,
-    sigma_z_lidar,
+    sigma_z_lidar=0.1,
+    sigma_z_dist=0.7,
     motion_model="velocity",
     sigma_u_odom=0.0,
     sim_step_s=0.1,
     particles_plot_step_s=5.0,
-    sim_length_s=1,
+    sim_length_s=25.0,
+    sim_init_pos=np.array([19.5, 3.5, 2.5*np.pi/3]),
 ):
-
-    sim_pos = pf.mu.copy()  # simulated position, copy the initial position set inside the PF
-    odom_pos = pf.mu.copy()  # odometry position, copy the initial position set inside the PF
+    sim_pos = sim_init_pos.copy()  # real robot position, copy the initial position set inside the PF
+    odom_pos = sim_init_pos.copy()  # odometry position, copy the initial position set inside the PF
 
     cmd_vel = np.array(
-        [0.8, 0.05]
+        [0.33, 0.003]
     )  # velocity command (v, omega). In this case will be constant for the whole simulation
 
     # convert the durations to number of time steps
@@ -84,9 +85,11 @@ def run_localization_sim(
     # The main loop that runs the simulation
     for i in range(steps):
         if np.any(cmd_vel == 0.0):
-            cmd_vel += 1e-9
-        elif i > steps/2:
-            cmd_vel = np.array([0.65, -0.03])
+            cmd_vel += np.random.normal(0.0, 0.01, size=2)  # add some noise to the command if it is zero
+        elif i > steps/3:
+            cmd_vel = np.array([0.25, -0.01]) + np.random.normal(0.0, 0.01, size=2)
+        elif i > 2*steps/3:
+            cmd_vel = np.array([0.35, -0.09]) + np.random.normal(0.0, 0.01, size=2)
         # Simulate robot motion for sim_step_s seconds using the Motion Model.
         # the sampling motion model already include Gaussian noise on the command
         sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, sigma_u, sim_step_s)
@@ -95,9 +98,9 @@ def run_localization_sim(
         # to simulate the error in the odometry reading, we take another Gaussian sample of the velocity command
         odom_pos = sample_velocity_motion_model(odom_pos, cmd_vel, sigma_u, sim_step_s)
         track_odom.append(odom_pos)
-
-        if i % pf_step == 0 and i != 0:  # only update pf at dt intervals
-            # run the prediction step of the PF
+        
+        # run the prediction step of the PF every 2 sim steps (i.e. every pf_dt seconds)
+        if i % pf_step*10 == 0 and i != 0:  # only update pf at dt intervals
             if motion_model == "velocity":
                 pf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(pf_dt,))
             elif motion_model == "odometry":
@@ -107,6 +110,7 @@ def run_localization_sim(
 
             pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
 
+        if i % pf_step == 0 and i != 0:  # only update pf at dt intervals
             if eval_hx_landm:
                 # Simulate the measurement of the landmarks
                 for lmark in landmarks:
@@ -121,13 +125,18 @@ def run_localization_sim(
             
             if eval_hx_lidar:
                 # simulate laser measurement adding noise to the ones obtained by casting rays in the map
-                _, rng = cast_rays(map, pf.mu, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
-                z_points = rng + np.random.normal(0, sigma_z_lidar**2, size=lidar_num_rays)
-                z_points = np.clip(z_points, 0., lidar_max_range)
+                _, rng = cast_rays(map, sim_pos, lidar_num_rays, lidar_fov, lidar_max_range) # with real laser sensor this is not needed
+                z_points = rng.copy()
+                # add noise to the simulated laser measurement only if they hit an obstacle (i.e. the range is less than the maximum range of the sensor)
+                hits = rng < lidar_max_range
+                z_points[hits] += np.random.normal(
+                    0.0, sigma_z_lidar, size=np.count_nonzero(hits)
+                )
+                z_points = np.clip(z_points, 0.0, lidar_max_range)
 
                 # update filter state with laser range sensor model
                 pf.update(z_points, sigma_z_lidar, eval_hx=eval_hx_lidar, 
-                        hx_args=(z_points, distances, prob_gridmap, sigma_z_lidar, lidar_num_rays, lidar_max_range, lidar_fov, mix_density_lidar),
+                        hx_args=(z_points, distances, prob_gridmap, sigma_z_dist, lidar_num_rays, lidar_max_range, lidar_fov, mix_density_lidar),
                         )   
                 
             # after the update of the weights with the measurements, we normalize the weights to make them probabilities
@@ -204,8 +213,10 @@ def main():
     landm_fov = math.pi / 2
 
     # sim params
-    pf_dt = 1  # time interval between measurements [s]
-    sim_length_s = 28  # length of the simulation [s]
+    pf_dt = 1.0  # time interval between measurements [s]
+    sim_step_s = 0.1  # time step of the simulation [s]
+    sim_length_s = 60.0  # length of the simulation [s]
+    sim_init_pos = np.array([19.5, 4.5, 2.5*np.pi/3])
 
     # Probabilistic models parameters
     dim_x = 3
@@ -215,8 +226,8 @@ def main():
     sensor_model = ["likelihood_fields"]  # 'landmarks', 'beam_range', or 'likelihood_fields' 
 
     # general noise parameters
-    std_lin_vel = 0.1  # [m/s]
-    std_ang_vel = np.deg2rad(0.5)  # [rad/s]
+    std_lin_vel = 0.01  # [m/s]
+    std_ang_vel = np.deg2rad(0.05)  # [rad/s]
     sigma_u = np.array([std_lin_vel, std_ang_vel])
     sigma_u_odom = 0
 
@@ -259,7 +270,9 @@ def main():
     lidar_max_range = 8.0
     lidar_num_rays = 6
     lidar_fov = 2*math.pi
-    mix_density, sigma_z_lidar = [0.9, 0.00, 0.1], 0.1 # for likelihood field model
+    sigma_z_lidar = 0.1 # [m]
+    mix_density = [0.8, 0.1, 0.1]# for likelihood field model
+    sigma_dist_lf = 0.7 # [m]
 
     # Define gridmap
     map_path = '2D_maps/map31_grey.png'
@@ -285,10 +298,10 @@ def main():
         eval_gux=eval_gux,
         resampling_fn=systematic_resample,
         boundaries=[(0.0, max_x), (0.0, max_y), (-np.pi, np.pi)],
-        N=500,
+        N=500,  # number of particles
     )
 
-    pf.mu = np.array([19, 2, 2*np.pi/3])     # initial x, y, theta of the robot  
+    # pf.mu = np.array([19, 2, 2*np.pi/3])     # initial x, y, theta of the robot  
 
     # initialize particles using the gridmap using the free spaces list
     init_particles_dist = "uniform_free_spaces"  # "uniform_free_spaces", "uniform_rejection", "gaussian"
@@ -324,6 +337,7 @@ def main():
         sigma_u=sigma_u,
         sigma_z_landm=sigma_z_landm,
         sigma_z_lidar=sigma_z_lidar,
+        sigma_z_dist=sigma_dist_lf,
         mix_density_lidar=mix_density,
         distances=distance_grid,
         prob_gridmap=p_gridmap,
@@ -331,6 +345,9 @@ def main():
         sigma_u_odom=sigma_u_odom,
         particles_plot_step_s=3.0,
         sim_length_s=sim_length_s,
+        sim_step_s=sim_step_s,
+        sim_init_pos=sim_init_pos,
+        
     )
 
     plt.close("all")
