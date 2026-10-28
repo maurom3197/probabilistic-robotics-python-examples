@@ -1,5 +1,8 @@
 name: Build and deploy velocity lab
 on:
+  push:
+    branches:
+      - gh-pages
   workflow_call:
     inputs:
       source_ref:
@@ -10,6 +13,7 @@ permissions:
   contents: read
 jobs:
   build:
+    if: github.event_name == 'workflow_call'
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -74,6 +78,7 @@ jobs:
             site/velocity-mobile.png
   deploy:
     needs: build
+    if: github.event_name == 'workflow_call'
     permissions:
       pages: write
       id-token: write
@@ -83,5 +88,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy tested site
+        id: deployment
+        uses: actions/deploy-pages@v4
+  deploy-pushed-pages:
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout pushed gh-pages commit
+        uses: actions/checkout@v4
+      - name: Upload current site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+      - name: Deploy current site
         id: deployment
         uses: actions/deploy-pages@v4
