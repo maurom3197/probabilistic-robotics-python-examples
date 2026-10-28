@@ -1,0 +1,18 @@
+name: Update Pages from main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: robotics-github-pages
+  cancel-in-progress: false
+jobs:
+  pages:
+    if: github.ref == 'refs/heads/main'
+    uses: maurom3197/probabilistic-robotics-python-examples/.github/workflows/deploy-pages.yml@gh-pages
+    with:
+      source_ref: ${{ github.sha }}
