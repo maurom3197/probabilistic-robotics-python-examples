@@ -200,23 +200,36 @@ class MotionScene {
   }
 }
 
-export function drawHistogram(canvas, histogram) {
+export function drawPositionDistribution(canvas, distribution) {
   const width = Math.max(canvas.clientWidth, 150), height = 180, ratio = Math.min(devicePixelRatio || 1, 2);
   canvas.width = width*ratio; canvas.height = height*ratio;
   const c = canvas.getContext('2d'); c.setTransform(ratio, 0, 0, ratio, 0, 0);
   c.clearRect(0, 0, width, height);
   c.font = '10px system-ui'; c.fillStyle = '#8290a4';
-  if (!histogram) { c.fillText('The distribution will appear after a run.', 8, 55); return; }
-  const left = 35, bottom = height-30, right = width-12, top = 12;
-  const max = Math.max(...histogram.counts, 1), bar = (right-left)/histogram.counts.length;
+  if (!distribution) { c.fillText('The distribution will appear after a run.', 8, 55); return; }
+  const left = 42, bottom = height-37, right = width-12, top = 12;
+  const {counts, edges, mean, std_dev} = distribution;
+  const halfSpan = std_dev > 0 ? 5*std_dev : .5;
+  const xmin = mean-halfSpan, xmax = mean+halfSpan;
+  const xToPixel = x => left+(x-xmin)/(xmax-xmin)*(right-left);
+  const maxCount = Math.max(...counts, 1);
   c.strokeStyle = '#e5ecf6';
-  for (let i = 0; i <= 3; i++) {
-    const y = bottom-i/3*(bottom-top); c.beginPath(); c.moveTo(left, y); c.lineTo(right, y); c.stroke();
-    c.fillText(String(Math.round(i/3*max)), 2, y+3);
+  for (let i = 0; i <= 4; i++) {
+    const y = bottom-i/4*(bottom-top); c.beginPath(); c.moveTo(left, y); c.lineTo(right, y); c.stroke();
+    c.fillText(String(Math.round(i/4*maxCount)), 2, y+3);
   }
+  c.textAlign = 'center';
+  for (let i = 0; i <= 2; i++) {
+    const x = left+i/2*(right-left); c.beginPath(); c.moveTo(x, top); c.lineTo(x, bottom); c.stroke();
+    c.fillText((xmin+i/2*(xmax-xmin)).toFixed(2), x, bottom+13);
+  }
+  c.save(); c.beginPath(); c.rect(left, top, right-left, bottom-top); c.clip();
   c.fillStyle = '#6f98eb';
-  histogram.counts.forEach((v, i) => c.fillRect(left+i*bar+.5, bottom-v/max*(bottom-top), Math.max(bar-1, .5), v/max*(bottom-top)));
-  c.fillStyle = '#64748b'; const start = histogram.edges[0], end = histogram.edges.at(-1);
-  for (let i = 0; i <= 4; i++) { const x = left+(right-left)*i/4; c.fillText((start+(end-start)*i/4).toFixed(3), Math.min(x-12, width-40), height-12); }
-  c.fillText('rad', width-25, height-1);
+  counts.forEach((count, i) => {
+    const x0 = xToPixel(edges[i]), x1 = xToPixel(edges[i+1]);
+    const barHeight = count/maxCount*(bottom-top);
+    c.fillRect(x0+.25, bottom-barHeight, Math.max(x1-x0-.5, .5), barHeight);
+  });
+  c.restore(); c.fillStyle = '#64748b';
+  c.fillText('x-position [m]', (left+right)/2, height-3);
 }

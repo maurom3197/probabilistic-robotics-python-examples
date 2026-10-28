@@ -38,6 +38,8 @@ const {chromium} = require('playwright');
   await page.waitForFunction(() => document.body.dataset.runCount === '1', null, {timeout: 240000});
   assert.equal(await page.textContent('#mean-x'), '2.800');
   assert.equal(await page.textContent('#mean-y'), '4.000');
+  assert.match(await page.textContent('#distribution-stats'), /mean = 2\.800 m · std_dev = 0\.000 m/);
+  assert.equal(await page.locator('#position-distribution').count(), 1);
   await page.fill('#v', '1.200');
   await page.waitForTimeout(500);
   assert.equal(await page.getAttribute('body', 'data-run-count'), '1');

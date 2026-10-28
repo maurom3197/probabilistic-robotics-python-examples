@@ -73,13 +73,14 @@ def advance_job():
 
 def finish_job():
     j = _job; particles = j['particles']; p = j['p']
-    heading_errors = (particles[:, 2]-j['nominal'][2]+np.pi)%(2*np.pi)-np.pi
-    hist, edges = np.histogram(heading_errors, bins=32)
+    x_samples = particles[:, 0]
+    hist, edges = np.histogram(x_samples, bins=100)
     resultant = np.hypot(np.sin(particles[:, 2]).mean(), np.cos(particles[:, 2]).mean())
     sigma_theta = np.sqrt(max(0., -2*np.log(np.clip(resultant, 1e-15, 1.))))
     std = np.std(particles[:, :2], axis=0)
     mean = _frame()['mean']
     return json.dumps(dict(parameters=p, sample_count=int(p['samples']), shown_count=len(j['shown']),
                            mean=mean, sigma_x=float(std[0]), sigma_y=float(std[1]), sigma_theta=float(sigma_theta),
-                           histogram=dict(counts=hist.tolist(), edges=edges.tolist()),
+                           position_distribution=dict(counts=hist.tolist(), edges=edges.tolist(),
+                                                      mean=float(np.mean(x_samples)), std_dev=float(np.std(x_samples))),
                            final_particles=particles.tolist()), allow_nan=False)

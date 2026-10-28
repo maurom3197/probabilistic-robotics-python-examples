@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Interactive velocity motion model lab: run Python algorithms in your browser, with no installation.">
-  <title>Velocity Lab · Probabilistic Robotics</title>
+  <title>Motion Model Lab · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Velocity Lab, home page">
+    <a class="brand" href="./" aria-label="Motion Model Lab, home page">
       <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true"><rect width="36" height="36" rx="10" fill="#2454d7"/><path d="M8 25 Q11 8 27 10 M8 25 Q20 27 27 10" fill="none" stroke="white" stroke-width="1.7"/><circle cx="8" cy="25" r="2.5" fill="#b6e6ff"/><circle cx="27" cy="10" r="2.5" fill="#fff"/></svg>
       <span>Probabilistic Robotics <small>INTERACTIVE LAB</small></span>
     </a>
@@ -57,7 +57,7 @@
           <div class="metric card"><span>Position σ</span><strong id="position-sigma">—</strong><small>x / y · m</small></div>
           <div class="metric card"><span>Heading σ</span><strong id="heading-sigma">—</strong><small>circular · rad</small></div>
         </div>
-        <div class="distribution card"><div class="section-title"><div><h2>Heading distribution</h2><p class="hint">Final error relative to the nominal trajectory, wrapped to [−π, π).</p></div><button class="button quiet" id="download" type="button" disabled>Download JSON ↓</button></div><canvas id="histogram" aria-label="Histogram of final heading error"></canvas></div>
+        <div class="distribution card"><div class="section-title"><div><h2>Normal distribution of samples</h2><p class="hint">Histogram of the sampled final x positions, using 100 bins and a mean ± 5 standard deviations view.</p><p id="distribution-stats" class="hint" aria-live="polite">Run the simulation to see the sample mean and standard deviation.</p></div><button class="button quiet" id="download" type="button" disabled>Download JSON ↓</button></div><canvas id="position-distribution" aria-label="Histogram of sampled final x positions in meters"></canvas></div>
         <details class="card run-record"><summary>Parameters from the latest run</summary><p class="hint">These values describe the displayed plots, even if the controls on the left have changed.</p><pre id="last-parameters">No runs yet.</pre></details>
       </section>
     </div>
@@ -65,7 +65,7 @@
       <p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2>
       <div class="theory-note"><h3>1. One command, many outcomes</h3><p>The command u = [v, ω] is perturbed by noise. Each sample starts from the same initial pose and receives new perturbations at every time step Δt.</p></div>
     </section>
-    <footer><span>Probabilistic Robotics · Velocity Lab</span><span id="source-info">Repository model · runs locally in your browser</span></footer>
+    <footer><span>Probabilistic Robotics · Motion Model Lab</span><span id="source-info">Repository model · runs locally in your browser</span></footer>
   </main>
   <noscript>This application requires JavaScript and a browser with WebAssembly.</noscript>
   <script type="module" src="./app.js"></script>

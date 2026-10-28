@@ -1,4 +1,4 @@
-import {createScene, drawHistogram} from './scene.js';
+import {createScene, drawPositionDistribution} from './scene.js';
 
 export const PARAMETERS = [
   ['v', 'Linear velocity v (m/s)', 0, 2, .8, 'command', .001],
@@ -150,7 +150,9 @@ function renderResult(value, elapsed) {
   $('frame').max = result.frames.length-1; $('frame').disabled = false;
   $('play').disabled = false; $('download').disabled = false;
   displayFrame(result.frames.length-1);
-  drawHistogram($('histogram'), result.histogram);
+  const distribution = result.position_distribution;
+  $('distribution-stats').textContent = `mean = ${distribution.mean.toFixed(3)} m · std_dev = ${distribution.std_dev.toFixed(3)} m`;
+  drawPositionDistribution($('position-distribution'), distribution);
   $('last-parameters').textContent = JSON.stringify({parameters: lastParameters, runtime: result.runtime, source: provenance}, null, 2);
   setStatus(`Run ${completed} · ${result.sample_count} samples computed, ${result.shown_count} displayed · ${(elapsed/1000).toFixed(2)} s${completed === 1 ? ' (includes initial loading)' : ''}.`);
   refreshDraftStatus();
@@ -195,8 +197,8 @@ function init() {
     const link = document.createElement('a'); link.href = url; link.download = `velocity-run-${completed}-seed-${result.parameters.seed}.json`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
-  const resize = () => drawHistogram($('histogram'), result?.histogram);
-  new ResizeObserver(resize).observe($('histogram')); resize();
+  const resize = () => drawPositionDistribution($('position-distribution'), result?.position_distribution);
+  new ResizeObserver(resize).observe($('position-distribution')); resize();
   createScene($('scene')).then(view => {
     scene = view; $('renderer-status').textContent = `${view.mode} · drag to pan, scroll to zoom`;
     if (result) { scene.setResult(result); displayFrame(Number($('frame').value)); }

@@ -89,7 +89,12 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(len(r['final_particles']), 1600)
         p = np.array(r['final_particles'])
         np.testing.assert_allclose(r['mean'][:2], p[:, :2].mean(axis=0))
-        self.assertEqual(sum(r['histogram']['counts']), 1600)
+        distribution = r['position_distribution']
+        self.assertEqual(len(distribution['counts']), 100)
+        self.assertEqual(len(distribution['edges']), 101)
+        self.assertEqual(sum(distribution['counts']), 1600)
+        self.assertAlmostEqual(distribution['mean'], p[:, 0].mean())
+        self.assertAlmostEqual(distribution['std_dev'], p[:, 0].std())
         json.dumps(r, allow_nan=False)
 
     def test_invalid_inputs(self):
