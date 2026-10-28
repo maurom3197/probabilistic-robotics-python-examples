@@ -130,75 +130,11 @@ def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fo
 
     return z
 
-
-# def likelihood_field_laser_model_pf(robot_pose, z_points, distances, p_hit_grid, sigma_dist=0.7, num_rays=36, z_max=8.0, fov=math.pi, mix_density=[0.9, 0.0, 0.1]):
-#     """""
-#     Likelihood field probabilistic model function
-#     Compute the prob associated to each particle based on the laser measurements
-#     ------
-#     Arguments:
-#     robot pose: the estimated robot pose
-#     z_points: the laser measurements
-#     distances: distances of nearest obstacles in the map, it can be precomputed and used as lookup table
-#     mix_density: weights for the different components of the model [hit, max, random]
-#     ------
-#     Returns:
-#     probs: the prob associated to each particle based on the laser measurements
-#     """ ""
-#     if robot_pose is list:
-#         robot_pose = np.array(robot_pose)
-
-#     if robot_pose.ndim == 1:  # manage the case of a single pose
-#         robot_pose = robot_pose.reshape(1, -1)
-    
-#     # Precompute some constants
-#     max_dist = np.max(distances) # max distance in the distance map
-#     # sigma_dist = np.std(distances) # use std of the distance map as sigma
-#     p_max_dist = compute_p_hit_dist(max_dist, max_dist, sigma_dist) # max distance prob
-
-#     p_rand = 1.0 / z_max # uniform random component
-#     step_angle = fov/num_rays # step angle between rays
-#     probs = np.ones((robot_pose.shape[0], num_rays))
-    
-#     # loop over particles
-#     for i in range(robot_pose.shape[0]):       
-#         # loop over laser rays
-#         for k, z_k in enumerate(z_points):
-#             # print(f"Particle {i}, ray {k}, z_k: {z_k}, start_angle: {start_angle}")
-#             # skip max range readings
-#             if not np.isfinite(z_k) or z_k < 0.0 or z_k >= z_max:
-#                 continue
-
-#             # get endpoint coordinates of the ray
-#             start_angle = robot_pose[i, 2] - fov / 2 + k * step_angle
-#             start_angle = normalize_angle(start_angle)
-#             target_x = robot_pose[i, 0] + np.cos(start_angle) * z_k
-#             target_y = robot_pose[i, 1] + np.sin(start_angle) * z_k
-
-#             # check if endpoint is inside the map limits
-#             x = math.floor(target_x)
-#             y = math.floor(target_y)
-
-#             if (
-#                 0 <= x < distances.shape[0]
-#                 and 0 <= y < distances.shape[1]
-#             ):
-#                 p_hit_k = p_hit_grid[x, y] # precomputed hit probability from the likelihood field
-#             else:
-#                 p_hit_k = p_max_dist # if the endpoint is outside the map, use the max distance probability
-
-#             # Calculate the final mixed probability for the k-th ray
-#             p_k = mix_density[0] * p_hit_k + mix_density[2] * p_rand
-#             # store the prob associated to the k-th ray for the i-th particle
-#             probs[i, k] = p_k
-
-#     return probs
-
 def likelihood_field_laser_model_pf(
     robot_pose,
     z_points,
     distances,
-    p_hit_grid,
+    p_hit_grid=None,
     sigma=1.0,
     num_rays=36,
     z_max=8.0,

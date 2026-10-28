@@ -15,8 +15,10 @@ def evaluate_prob(dist, z, z_max, _mix_density, _sigma):
     p_z = np.zeros((z.shape[0]))
     for k, z_k in enumerate(z):
         # Calculate hit mode probability
-        p_hit = compute_p_hit_dist(dist[k], max_dist, _sigma)
-
+        # p_hit = compute_p_hit_dist(dist[k], max_dist, _sigma)
+        p_hit = np.exp(-0.5 * (dist[k] / _sigma) ** 2)
+        # print("dist[k]:", dist[k], "p_hit:", p_hit)
+        
         # Calculate max mode probability
         if z_k == z_max:
             p_max = 1.0

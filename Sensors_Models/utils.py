@@ -57,13 +57,15 @@ def compute_p_hit_dist(dist, max_dist, sigma):
     """
 
     # Normalize the Gaussian PDF with the CDF probability computed over [0, max_dist]
-    normalize_hit = norm.cdf(max_dist, loc=0, scale=sigma) - norm.cdf(0, loc=0, scale=sigma)
-    normalize_hit = 1. / normalize_hit
+    # normalize_hit = norm.cdf(max_dist, loc=0, scale=sigma) - norm.cdf(0, loc=0, scale=sigma)
+    # normalize_hit = 1. / normalize_hit
 
-    p_hit = norm.pdf(dist, loc=0, scale=sigma) * normalize_hit
+    p_hit = norm.pdf(dist, loc=0, scale=sigma) 
+    # p_hit *= normalize_hit
     p_hit = np.where((dist > max_dist) | (dist < 0.0), 0.0, p_hit)  # Set p_hit to 0 for distances greater than max_dist or negative anomalies
 
     return p_hit
+
 
 # Vectorized probabilistic likelihood field model
 def precompute_p_hit_map(distances, max_dist=None, sigma=1.0):
@@ -117,13 +119,11 @@ def evaluate_range_beam_dist_array(z, z_star, z_max, _mix_density, _sigma, _lamb
     z_star = np.asarray(z_star)
 
     # --- Hit mode normalization ---
-    j = np.arange(int(z_max))
-    normalize_hit = np.sum(gaussian(j[:, None], z_star.ravel(), _sigma), axis=0)
-    normalize_hit = normalize_hit.reshape(z_star.shape)
-    normalize_hit = np.where(normalize_hit > 0, 1.0 / normalize_hit, 1.0)
+    normalize_hit = norm.cdf(z_max, loc=z_star, scale=_sigma) - norm.cdf(0, loc=z_star, scale=_sigma)
+    normalize_hit = 1. / normalize_hit
 
     # Hit probability
-    p_hit = gaussian(z, z_star, _sigma) * normalize_hit
+    p_hit = norm.pdf(z, loc=z_star, scale=_sigma) * normalize_hit
 
     # --- Short mode ---
     normalize_short = 1.0 - np.exp(-_lamb_short * z_star)

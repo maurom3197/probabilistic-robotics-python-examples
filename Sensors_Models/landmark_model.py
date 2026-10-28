@@ -3,24 +3,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from  matplotlib.patches import Arc
-from Sensors_Models.utils import compute_p_hit_dist
+from scipy.stats import norm
 arrow = u'$\u2191$'
 
-def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fov=math.pi/2):
+def landmark_range_bearing_model(robot_pose, landmark, sigma):
     """""
-    Simulate the detection of a landmark with a virtual sensor able to estimate range and bearing
-    """""
+    Sampling z from landmark model for range and bearing
+    """ ""
     m_x, m_y = landmark[:]
     x, y, theta = robot_pose[:]
 
-    r_ = math.dist([x, y], [m_x, m_y]) + np.random.normal(0., sigma[0])
-    phi_ = math.atan2(m_y - y, m_x - x) - theta + np.random.normal(0., sigma[1])
+    r_ = math.dist([x, y], [m_x, m_y]) + np.random.normal(0.0, sigma[0])
+    phi_ = math.atan2(m_y - y, m_x - x) - theta + np.random.normal(0.0, sigma[1])
+    return np.array([r_, phi_])
 
-    # filter z for a more realistic sensor simulation (add a max range distance and a FOV)
-    if r_ > max_range or abs(phi_) > fov / 2:
+
+def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fov=math.pi / 2):
+    """""
+    Simulate the detection of a landmark with a virtual sensor able to estimate range and bearing
+    """ ""
+    z = landmark_range_bearing_model(robot_pose, landmark, sigma)
+
+    # filter z for a more realistic sensor model (add a max range distance and a FOV)
+    if z[0] > max_range or abs(z[1]) > fov / 2:
         return None
 
-    return [r_, phi_]
+    return z
+
 
 def landmark_model_prob(z, landmark, robot_pose, max_range, fov, sigma):
     """""
@@ -39,7 +48,7 @@ def landmark_model_prob(z, landmark, robot_pose, max_range, fov, sigma):
 
     r_hat = math.dist([x, y], [m_x, m_y])
     phi_hat = math.atan2(m_y - y, m_x - x) - theta
-    p = compute_p_hit_dist(z[0] - r_hat, max_range, sigma_r) * compute_p_hit_dist(z[1] - phi_hat, fov/2, sigma_phi)
+    p = norm.pdf(z[0] - r_hat, loc=0, scale=sigma_r) * norm.pdf(z[1] - phi_hat, loc=0, scale=sigma_phi)
 
     return p
 
@@ -139,7 +148,9 @@ def plot_landmarks(landmarks, robot_pose, z, p_z, max_range=6.0, fov=math.pi/4):
     
     col = np.array(p_z)
     plt.scatter(lm_z[:,0], lm_z[:,1], s=60, c=col, cmap='viridis')
-    plt.colorbar()
+    # plot colorbar with label
+    cbar = plt.colorbar()
+    cbar.set_label('Probability density value', rotation=270, labelpad=15)
 
     plt.show()
     plt.close('all')
@@ -151,36 +162,45 @@ def main():
     ##############################
 
     # robot pose
-    robot_pose = np.array([0., 0., math.pi/4])
+    robot_pose = np.array([3., 4., -math.pi/2])  # [x, y, theta] in map coordinates
     # landmarks position in the map
     landmarks = [
-                 np.array([5., 2.]),
-                 np.array([-2.5, 3.]),
-                 np.array([3., 1.5]),
-                 np.array([4., -1.]),
-                 np.array([-2., -2.])
+                 np.array([5., 2.]), # landmark 1 [x, y]
+                 np.array([-2.5, 3.]), #landmark 2 [x, y]
+                 np.array([3., 1.5]), # landmark 3 [x, y]
+                 np.array([4., -1.]), # landmark 4 [x, y]
+                 np.array([-2., -2.]), # landmark 5 [x, y]
+                 np.array([2., -1.]), # landmark 6 [x, y]
+                 np.array([-4., -2.]), # landmark 7 [x, y]
+                 np.array([-3., 1.]), # landmark 8 [x, y]
+                 np.array([5., 5.]), # landmark 9 [x, y]
+                 np.array([-5., 5.]), # landmark 10 [x, y]
+                 np.array([-5., -5.]), # landmark 11 [x, y]
+                 np.array([0., -5.]), # landmark 12 [x, y]
+                 np.array([0., 5.]) # landmark 13 [x, y]
                  ]
     # sensor parameters
     fov = math.pi/3
     max_range = 6.0
-    sigma = np.array([0.3, math.pi/24])
+    sigma_sensor = np.array([0.05, np.deg2rad(3)])  # [sigma_r, sigma_phi]
+    sigma_model = np.array([0.3, np.deg2rad(18)])  # [sigma_r, sigma_phi]
 
     # compute measurements and associated probability
     z = []
     p = []
     for i in range(len(landmarks)):
         # read sensor measurements (range, bearing)
-        z_i = landmark_range_bearing_sensor(robot_pose, landmarks[i], sigma=sigma, max_range=max_range, fov=fov)
+        z_i = landmark_range_bearing_sensor(robot_pose, landmarks[i], sigma=sigma_sensor, max_range=max_range, fov=fov)
          
         if z_i is not None: # if landmark is not detected, the measurement is None
             z.append(z_i)
             # compute the probability for each measurement according to the landmark model algorithm
-            p_i = landmark_model_prob(z_i, landmarks[i], robot_pose, max_range, fov, sigma)
+            p_i = landmark_model_prob(z_i, landmarks[i], robot_pose, max_range, fov, sigma_model)
             p.append(p_i)
 
     print("Probability density value:", p)
     # Plot landmarks, robot pose with sensor FOV, and detected landmarks with associated probability
-    plot_landmarks(landmarks, robot_pose, z, p, fov=fov)
+    plot_landmarks(landmarks, robot_pose, z, p, max_range=max_range, fov=fov)
 
     ##########################################
     ### Sampling poses from landmark model ###
@@ -191,11 +211,11 @@ def main():
     
     # consider only the first landmark detected
     landmark = landmarks[0]
-    z = landmark_range_bearing_sensor(robot_pose, landmark, sigma)
+    z = landmark_range_bearing_model(robot_pose, landmark, sigma_model)
 
     # plot landmark
     plt.plot(landmark[0], landmark[1], "sk", ms=10)
-    plot_sampled_poses(robot_pose, z, landmark, sigma)
+    plot_sampled_poses(robot_pose, z, landmark, sigma_model)
     
     plt.close('all')
 
