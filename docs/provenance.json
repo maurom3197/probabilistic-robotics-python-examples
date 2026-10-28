@@ -1,0 +1,7 @@
+{
+  "source": "Motion_Models/velocity_motion_model.py",
+  "branch": "main",
+  "commit": "c80876e806df82734665e70432a51aa6dabebf27",
+  "sha256": "388c3e3730acf8d6787a3a97bd3055bd61ec59a7fbc126acea29f6db244d1f5c",
+  "adaptation": "Plot-free export; stable straight-line limit; original alpha noise draws retained"
+}
