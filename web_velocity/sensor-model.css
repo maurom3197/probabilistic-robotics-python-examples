@@ -1,0 +1,31 @@
+.sensor-intro { margin-bottom: 18px; }
+.sensor-section-nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 34px; }
+.sensor-section-nav a { background: #fff; border: 1px solid var(--line); border-radius: 8px; color: var(--blue); font-size: 11px; font-weight: 650; padding: 10px 13px; }
+.sensor-section-nav a:hover { background: #f3f6fb; }
+.sensor-experiment { padding: 26px 0 38px; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+.sensor-section-heading { max-width: 800px; margin-bottom: 20px; }
+.sensor-section-heading h2 { font-size: clamp(22px, 2.5vw, 28px); }
+.sensor-section-heading > p:not(.eyebrow) { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.sensor-section-heading code { color: var(--ink); }
+.sensor-stage { padding-bottom: 13px; }
+.sensor-stage .stage-heading { padding-bottom: 3px; }
+.sensor-stage .legend { margin-bottom: 5px; }
+.sensor-canvas { display: block; width: 100%; height: 390px; background: #fbfdff; margin-top: 11px; }
+.sensor-plot-note { padding: 0 20px; margin-top: 9px; }
+.sensor-readings { padding: 20px; }
+.sensor-readings h2 { margin-bottom: 5px; }
+.reading-list { overflow-x: auto; margin-top: 16px; color: var(--muted); font-size: 11px; }
+.sensor-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.sensor-table th { text-align: left; color: var(--ink); font-weight: 700; background: #f3f6fb; }
+.sensor-table th, .sensor-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.landmark-list-heading, .landmark-edit-row { display: grid; grid-template-columns: 1fr 73px 73px; align-items: center; gap: 6px; }
+.landmark-list-heading { margin: 12px 0 6px; font-size: 9px; color: var(--muted); }
+.landmark-edit-row { margin-bottom: 5px; font-size: 10px; color: var(--muted); }
+.landmark-edit-row input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: #fbfcff; color: var(--ink); padding: 5px 3px; text-align: right; font-size: 11px; }
+#map-choice { width: 100%; margin-top: 6px; }
+#field-weight-controls .parameter-row { margin-bottom: 9px; }
+@media (max-width: 720px) {
+  .sensor-experiment { padding-top: 22px; }
+  .sensor-canvas { height: 340px; }
+  .sensor-section-nav a { flex: 1; text-align: center; }
+}
