@@ -9,7 +9,7 @@
   <img src=./readme_images/multi_odometry_samples.png alt="Odometry samples over multiple motion steps" width="400"/>
 </p>
 
-Python scripts and notebooks for practical, educational examples of algorithms from *Probabilistic Robotics*. The examples simulate robot motion, measurements, localization, mapping, and SLAM.
+Python scripts for practical, educational examples of algorithms from *Probabilistic Robotics*. The examples simulate robot motion, measurements, localization, mapping, and SLAM.
 
 ## Repository organization
 
