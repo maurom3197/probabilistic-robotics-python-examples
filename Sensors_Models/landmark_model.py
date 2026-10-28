@@ -48,7 +48,6 @@ def landmark_model_prob(z, landmark, robot_pose, max_range, fov, sigma):
 
     r_hat = math.dist([x, y], [m_x, m_y])
     phi_hat = math.atan2(m_y - y, m_x - x) - theta
-    # p = compute_p_hit_landmark(z[0] - r_hat, max_range, sigma_r) * compute_p_hit_landmark(z[1] - phi_hat, fov/2, sigma_phi)
     p = norm.pdf(z[0] - r_hat, loc=0, scale=sigma_r) * norm.pdf(z[1] - phi_hat, loc=0, scale=sigma_phi)
 
     return p
@@ -166,19 +165,19 @@ def main():
     robot_pose = np.array([3., 4., -math.pi/2])  # [x, y, theta] in map coordinates
     # landmarks position in the map
     landmarks = [
-                 np.array([5., 2.]),
-                 np.array([-2.5, 3.]),
-                 np.array([3., 1.5]),
-                 np.array([4., -1.]),
-                 np.array([-2., -2.]),
-                 np.array([2., -1.]),
-                 np.array([-4., -2.]),
-                 np.array([-3., 1.]),
-                 np.array([5., 5.]),
-                 np.array([-5., 5.]),
-                 np.array([-5., -5.]),
-                 np.array([0., -5.]),
-                 np.array([0., 5.])
+                 np.array([5., 2.]), # landmark 1 [x, y]
+                 np.array([-2.5, 3.]), #landmark 2 [x, y]
+                 np.array([3., 1.5]), # landmark 3 [x, y]
+                 np.array([4., -1.]), # landmark 4 [x, y]
+                 np.array([-2., -2.]), # landmark 5 [x, y]
+                 np.array([2., -1.]), # landmark 6 [x, y]
+                 np.array([-4., -2.]), # landmark 7 [x, y]
+                 np.array([-3., 1.]), # landmark 8 [x, y]
+                 np.array([5., 5.]), # landmark 9 [x, y]
+                 np.array([-5., 5.]), # landmark 10 [x, y]
+                 np.array([-5., -5.]), # landmark 11 [x, y]
+                 np.array([0., -5.]), # landmark 12 [x, y]
+                 np.array([0., 5.]) # landmark 13 [x, y]
                  ]
     # sensor parameters
     fov = math.pi/3

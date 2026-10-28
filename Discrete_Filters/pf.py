@@ -139,6 +139,8 @@ class RobotPF:
         # particles far from a measurement will give us 0.0 for a probability
         # due to floating point limits. Once we hit zero we can never recover,
         # so add some small nonzero value to all points.
+        
+        # OLD
         # if not beam_probs:
         #     self.weights += 1.e-30
         #     self.weights /= sum(self.weights) # normalize
