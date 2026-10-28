@@ -16,6 +16,13 @@ const {chromium} = require('playwright');
   page.on('pageerror', error => errors.push(error.message));
   const base = process.env.LAB_URL || 'http://127.0.0.1:8765/';
   await page.goto(base, {waitUntil: 'domcontentloaded'});
+  assert.match(await page.title(), /Probabilistic Robotics · Interactive Examples/);
+  assert.equal(await page.locator('.page-card').count(), 4);
+  for (const path of ['sensor-model.html', 'gaussian-filters.html', 'discrete-filters.html']) {
+    assert.equal((await page.request.get(new URL(path, base).href)).status(), 200);
+  }
+  await page.getByRole('link', {name: 'Open Motion Model →'}).click();
+  assert.match(page.url(), /motion-model\.html$/);
   await page.waitForSelector('#v');
   assert.equal(await page.getAttribute('html', 'lang'), 'en');
   for (const [key, min, max] of [['v', '0', '2'], ['omega', '-1.5', '1.5'], ['dt', '0.01', '1']]) {
