@@ -122,6 +122,7 @@ function nearestObstacleDistance(point, obstacles) {
 
 export function runLikelihoodField(p, map) {
   const [x, y] = p.pose;
+  const fov = p.fov ?? Math.PI/4, numRays = p.numRays ?? 12, zMax = p.maxRange ?? 8;
   if (x < 0 || x >= map.rows || y < 0 || y >= map.cols || map.cells[Math.trunc(x)][Math.trunc(y)] !== 0) {
     throw new Error('Place the robot in a free map cell');
   }
@@ -133,17 +134,17 @@ export function runLikelihoodField(p, map) {
   const totalWeight = p.weights.reduce((a, b) => a+b, 0);
   if (totalWeight <= 0) throw new Error('Enter at least one positive mixture weight');
   const weights = p.weights.map(w => w/totalWeight), rng = makeRandom(p.seed);
-  const rays = castRays(map, p.pose);
-  // The main example adds one shared noise draw and rare binomial terms to all 12 ranges.
+  const rays = castRays(map, p.pose, numRays, fov, zMax);
+  // The main example adds one shared noise draw and rare binomial terms to all ranges.
   const sharedNoise = rng.normal(.01)
     + Number(rng.uniform() < .001)+Number(rng.uniform() < .001)
     + 10*(Number(rng.uniform() < .001)+Number(rng.uniform() < .001));
   for (const ray of rays) {
-    ray.range = Math.max(0, Math.min(8, ray.expectedRange+sharedNoise));
+    ray.range = Math.max(0, Math.min(zMax, ray.expectedRange+sharedNoise));
     ray.endpoint = [x+ray.range*Math.cos(ray.angle), y+ray.range*Math.sin(ray.angle)];
     ray.distance = nearestObstacleDistance(ray.endpoint, obstacles);
     ray.probability = weights[0]*Math.exp(-.5*(ray.distance/p.sigmaHit)**2)
-      + weights[1]*(ray.range === 8 ? 1 : 0) + weights[2]/8;
+      + weights[1]*(ray.range === zMax ? 1 : 0) + weights[2]/zMax;
   }
   const distanceGrid = map.cells.map((row, r) => row.map((_, c) => nearestObstacleDistance([r, c], obstacles)));
   const maxDistance = Math.max(...distanceGrid.flat());

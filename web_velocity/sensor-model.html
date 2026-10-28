@@ -47,13 +47,14 @@
     </section>
 
     <section id="likelihood-field" class="sensor-experiment" aria-labelledby="field-heading">
-      <div class="sensor-section-heading"><p class="eyebrow">EXPERIMENT 02 · LIKELIHOOD FIELD</p><h2 id="field-heading">Laser rays on an occupancy map</h2><p>Choose any map from the repository's <code>2D_maps/</code> folder. The model uses 12 rays, a 45° field of view, an 8-cell maximum range, and the script's 4×4 map reduction.</p></div>
+      <div class="sensor-section-heading"><p class="eyebrow">EXPERIMENT 02 · LIKELIHOOD FIELD</p><h2 id="field-heading">Laser rays on an occupancy map</h2><p>Choose any map from the repository's <code>2D_maps/</code> folder, then set the sensor's field of view, ray count, and maximum range. Maps use the script's 4×4 reduction.</p></div>
       <div class="lab-grid">
         <aside class="controls card" aria-label="Likelihood field parameters">
           <div class="section-title"><h2>Parameters</h2><span class="small-label">LIKELIHOOD FIELD</span></div>
           <form id="field-form" novalidate>
             <fieldset><legend>Map</legend><label class="select-label" for="map-choice">Repository map file</label><select id="map-choice" name="map-choice"><option value="map0.png">map0.png</option><option value="map1.png">map1.png</option><option value="map2.png">map2.png</option><option value="map3.png">map3.png</option><option value="map31.png">map31.png</option><option value="map31_grey.png" selected>map31_grey.png</option><option value="map4.png">map4.png</option></select><p class="hint">White: free · black: occupied · gray: unknown. Map coordinates use grid cells.</p></fieldset>
             <fieldset><legend>Robot pose in map</legend><div id="field-pose-controls"></div><p class="hint">x is the map row; y is the map column, matching the Python script. The pose must be in a free cell.</p></fieldset>
+            <fieldset><legend>Laser sensor</legend><div id="field-sensor-controls"></div></fieldset>
             <fieldset><legend>Hit model</legend><div id="field-sigma-control"></div><p class="hint">The field and laser endpoint likelihoods update using this σ.</p></fieldset>
             <fieldset><legend>Mixture weights</legend><div id="field-weight-controls"></div><p class="hint">Weights are normalized to sum to 1 for each run. Current effective weights: <output id="weight-summary">0.900 / 0.050 / 0.050</output>.</p></fieldset>
             <button class="button primary run-button" type="submit" id="run-field"><span aria-hidden="true">▶</span> Run likelihood field</button>
@@ -63,7 +64,7 @@
         <div class="results">
           <div class="stage card sensor-stage"><div class="stage-heading"><div><p class="eyebrow">RAY LIKELIHOODS</p><h2>Probabilities of the laser ranges · LF</h2></div><span id="field-state" class="badge">Waiting for a run</span></div><canvas id="field-rays-plot" class="sensor-canvas map-canvas" role="img" aria-label="Occupancy map with laser rays and probability colored endpoints"></canvas><p class="hint sensor-plot-note">Ray endpoints are colored by p(z|x). Rays leaving the map keep the script's maximum-range reading.</p></div>
           <div class="stage card sensor-stage"><div class="stage-heading"><div><p class="eyebrow">PRECOMPUTED FIELD</p><h2>Pre-computed Likelihood Fields</h2></div><canvas id="field-heatmap-plot" class="sensor-canvas map-canvas" role="img" aria-label="Grayscale likelihood field over the selected occupancy map"></canvas><p class="hint sensor-plot-note">Brightness shows hit likelihood by distance to the nearest occupied cell; unknown cells remain gray.</p></div>
-          <div class="card sensor-readings"><h2>Laser measurements</h2><p class="hint">Noisy range, nearest-obstacle distance, and mixture probability for each of the 12 rays.</p><div id="field-readings" class="reading-list">No results yet.</div></div>
+          <div class="card sensor-readings"><h2>Laser measurements</h2><p class="hint">Noisy range, nearest-obstacle distance, and mixture probability for each configured ray.</p><div id="field-readings" class="reading-list">No results yet.</div></div>
         </div>
       </div>
     </section>

@@ -20,6 +20,11 @@ const FIELD_POSE = [
   ['field-y', 'Map column y (cells)', 0, 15.9, 11, .1],
   ['field-theta', 'Heading θ (°)', -180, 180, 0, 1],
 ];
+const FIELD_SENSOR = [
+  ['field-fov', 'Field of view (°)', 1, 360, 45, 1],
+  ['field-num-rays', 'Number of rays', 1, 360, 12, 1],
+  ['field-max-range', 'Maximum range (cells)', .5, 30, 8, .1],
+];
 const FIELD_SIGMA = [['field-sigma', 'Hit σ (cells)', .05, 5, .75, .01]];
 const FIELD_WEIGHTS = [
   ['weight-hit', 'z_hit', 0, 1, .9, .01],
@@ -156,16 +161,19 @@ function updateWeights() {
 
 function readField() {
   const pose=FIELD_POSE.map(([id,,min,max])=>readNumber(id,min,max));
+  const fov=readNumber('field-fov',1,360)*DEG;
+  const numRays=readNumber('field-num-rays',1,360,true);
+  const maxRange=readNumber('field-max-range',.5,30);
   const sigmaHit=readNumber('field-sigma',.05,5);
   const weights=FIELD_WEIGHTS.slice(0,3).map(([id,,min,max])=>readNumber(id,min,max));
   if (weights.every(w=>w===0)) throw new Error('Enter at least one positive mixture weight.');
-  return {mapFile:$('map-choice').value,pose:[pose[0],pose[1],pose[2]*DEG],sigmaHit,weights,
+  return {mapFile:$('map-choice').value,pose:[pose[0],pose[1],pose[2]*DEG],fov,numRays,maxRange,sigmaHit,weights,
     seed:readNumber('field-seed',0,999999,true)};
 }
 
 function renderField(result) {
   fieldResult=result; fieldRun++;
-  const badge=$('field-state'); badge.textContent=`Run ${fieldRun} · ${result.map.filename}`; badge.className='badge done';
+  const badge=$('field-state'); badge.textContent=`Run ${fieldRun} · ${result.map.filename} · ${result.rays.length} rays`; badge.className='badge done';
   drawFieldRays($('field-rays-plot'),result); drawFieldHeatmap($('field-heatmap-plot'),result);
   appendReadings($('field-readings'),['Ray','Range [cells]','Obstacle distance','p(z|x)'],result.rays.map((r,i)=>[
     i+1,r.range.toFixed(3),r.distance.toFixed(3),r.probability.toFixed(4),
@@ -183,6 +191,7 @@ function init() {
   });
   renderLandmarkRows(13);
   FIELD_POSE.forEach(def=>control($('field-pose-controls'),def,()=>markDraft('field')));
+  FIELD_SENSOR.forEach(def=>control($('field-sensor-controls'),def,()=>markDraft('field')));
   FIELD_SIGMA.forEach(def=>control($('field-sigma-control'),def,()=>markDraft('field')));
   FIELD_WEIGHTS.forEach(def=>control($('field-weight-controls'),def,id=>id.startsWith('weight-')?updateWeights():markDraft('field')));
   $('landmark-form').addEventListener('submit',event=>{
