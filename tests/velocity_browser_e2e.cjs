@@ -17,6 +17,15 @@ const {chromium} = require('playwright');
   const base = process.env.LAB_URL || 'http://127.0.0.1:8765/';
   await page.goto(base, {waitUntil: 'domcontentloaded'});
   await page.waitForSelector('#v');
+  assert.equal(await page.getAttribute('html', 'lang'), 'en');
+  for (const [key, min, max] of [['v', '0', '2'], ['omega', '-1.5', '1.5'], ['dt', '0.01', '1']]) {
+    for (const id of [key, `${key}-slider`]) {
+      assert.equal(await page.getAttribute(`#${id}`, 'min'), min);
+      assert.equal(await page.getAttribute(`#${id}`, 'max'), max);
+    }
+  }
+  assert.equal(await page.locator('#how-it-works .theory-note').count(), 1);
+  assert.match(await page.locator('#how-it-works').innerText(), /One command, many outcomes/);
   await page.fill('#v', '0.801');
   await page.locator('#v').dispatchEvent('change');
   await page.waitForTimeout(500);
@@ -33,7 +42,7 @@ const {chromium} = require('playwright');
   await page.waitForTimeout(500);
   assert.equal(await page.getAttribute('body', 'data-run-count'), '1');
   assert.equal(await page.textContent('#mean-x'), '2.800', 'Old output must remain labeled with its executed parameters');
-  assert.match(await page.textContent('#result-state'), /Parametri modificati/);
+  assert.match(await page.textContent('#result-state'), /Parameters changed/);
   await page.click('#run');
   await page.waitForFunction(() => document.body.dataset.runCount === '2', null, {timeout: 30000});
   assert.equal(await page.textContent('#mean-x'), '3.200');

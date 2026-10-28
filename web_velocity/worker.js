@@ -6,15 +6,15 @@ let busy = false;
 async function runtime(id) {
   if (!runtimePromise) {
     runtimePromise = (async () => {
-      self.postMessage({type: 'status', id, text: 'Caricamento di Python nel browser…'});
+      self.postMessage({type: 'status', id, text: 'Loading Python in your browser…'});
       const {loadPyodide} = await import(`${PYODIDE_BASE}pyodide.mjs`);
       const py = await loadPyodide({indexURL: PYODIDE_BASE});
-      self.postMessage({type: 'status', id, text: 'Caricamento di NumPy…'});
+      self.postMessage({type: 'status', id, text: 'Loading NumPy…'});
       await py.loadPackage('numpy');
       py.FS.mkdirTree('/velocity_lab');
       for (const name of ['velocity_core.py', 'experiment.py']) {
         const response = await fetch(new URL(`./python/${name}`, import.meta.url));
-        if (!response.ok) throw new Error(`Impossibile caricare ${name}: HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`Could not load ${name}: HTTP ${response.status}`);
         py.FS.writeFile(`/velocity_lab/${name}`, await response.text());
       }
       py.runPython("import sys\nimport numpy as np\nsys.path.insert(0, '/velocity_lab')\nfrom experiment import start_job, advance_job, finish_job");
@@ -33,7 +33,7 @@ function frameFromJSON(text) {
 self.onmessage = async ({data}) => {
   if (data.type !== 'run') return;
   const {id, parameters} = data;
-  if (busy) { self.postMessage({type: 'error', id, text: 'Una simulazione è già in corso'}); return; }
+  if (busy) { self.postMessage({type: 'error', id, text: 'A simulation is already running'}); return; }
   busy = true;
   try {
     const py = await runtime(id);

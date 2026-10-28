@@ -61,7 +61,7 @@ class MotionScene {
       this.canvas.setAttribute('aria-hidden', 'true'); old.replaceWith(this.canvas);
       this.context = this.canvas.getContext('2d');
     }
-    this.mode = this.renderer ? 'Three.js · piano x–y' : 'Canvas 2D · compatibilità';
+    this.mode = this.renderer ? 'Three.js · x–y plane' : 'Canvas 2D · compatibility mode';
     this.canvas.dataset.renderer = this.renderer ? 'three' : 'canvas';
     this.canvas.addEventListener('pointerdown', event => {
       this.drag = {x: event.clientX, y: event.clientY, cx: this.view.cx, cy: this.view.cy};
@@ -206,7 +206,7 @@ export function drawHistogram(canvas, histogram) {
   const c = canvas.getContext('2d'); c.setTransform(ratio, 0, 0, ratio, 0, 0);
   c.clearRect(0, 0, width, height);
   c.font = '10px system-ui'; c.fillStyle = '#8290a4';
-  if (!histogram) { c.fillText('La distribuzione sarà disponibile dopo l’esecuzione.', 8, 55); return; }
+  if (!histogram) { c.fillText('The distribution will appear after a run.', 8, 55); return; }
   const left = 35, bottom = height-30, right = width-12, top = 12;
   const max = Math.max(...histogram.counts, 1), bar = (right-left)/histogram.counts.length;
   c.strokeStyle = '#e5ecf6';

@@ -1,75 +1,73 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Laboratorio interattivo del velocity motion model: algoritmi Python eseguiti nel browser, senza installazione.">
+  <meta name="description" content="Interactive velocity motion model lab: run Python algorithms in your browser, with no installation.">
   <title>Velocity Lab · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Velocity Lab, pagina iniziale">
+    <a class="brand" href="./" aria-label="Velocity Lab, home page">
       <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true"><rect width="36" height="36" rx="10" fill="#2454d7"/><path d="M8 25 Q11 8 27 10 M8 25 Q20 27 27 10" fill="none" stroke="white" stroke-width="1.7"/><circle cx="8" cy="25" r="2.5" fill="#b6e6ff"/><circle cx="27" cy="10" r="2.5" fill="#fff"/></svg>
       <span>Probabilistic Robotics <small>INTERACTIVE LAB</small></span>
     </a>
-    <div class="top-links"><span class="pill">Python nel browser</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples" target="_blank" rel="noopener">Repository ↗</a></div>
+    <div class="top-links"><span class="pill">Python in your browser</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples" target="_blank" rel="noopener">Repository ↗</a></div>
   </header>
   <main>
     <section class="intro">
-      <div><p class="eyebrow">MOTION MODELS / 01</p><h1>Dai comandi alle traiettorie.</h1><p class="subtitle">Esplora il velocity motion model: scegli i parametri, esegui il modello e osserva come si propaga l’incertezza.</p></div>
-      <a class="text-link" href="#how-it-works">Come funziona ↓</a>
+      <div><p class="eyebrow">MOTION MODELS / 01</p><h1>From commands to trajectories.</h1><p class="subtitle">Explore the velocity motion model: choose parameters, run the model, and see how uncertainty spreads.</p></div>
+      <a class="text-link" href="#how-it-works">How it works ↓</a>
     </section>
     <div class="lab-grid">
-      <aside class="controls card" aria-label="Parametri della simulazione">
-        <div class="section-title"><h2>Parametri</h2><span class="small-label">PASSO 0,001</span></div>
-        <p class="hint">Modifica i valori con gli slider o inseriscili direttamente. Il calcolo parte solo con <strong>Esegui</strong>.</p>
+      <aside class="controls card" aria-label="Simulation parameters">
+        <div class="section-title"><h2>Parameters</h2><span class="small-label">STEP 0.001</span></div>
+        <p class="hint">Adjust values with the sliders or enter them directly. Calculation starts when you press <strong>Run</strong>.</p>
         <form id="parameters" novalidate>
-          <fieldset><legend>Comando di velocità</legend><div id="command-controls"></div></fieldset>
-          <fieldset><legend>Rumore del modello</legend>
-            <label class="select-label" for="noise-mode">Parametrizzazione</label>
-            <select id="noise-mode" name="noise_mode"><option value="alpha">Coefficienti α · repository</option><option value="sigma">Deviazioni standard σ dirette</option></select>
+          <fieldset><legend>Velocity command</legend><div id="command-controls"></div></fieldset>
+          <fieldset><legend>Model noise</legend>
+            <label class="select-label" for="noise-mode">Parameterization</label>
+            <select id="noise-mode" name="noise_mode"><option value="alpha">α coefficients · repository</option><option value="sigma">Direct σ standard deviations</option></select>
             <p id="noise-explanation" class="hint"></p>
             <div id="alpha-controls"></div><div id="sigma-controls" hidden></div>
-            <div class="effective-noise" aria-label="Deviazioni standard effettive del comando"><span>σv <output id="effective-v">—</output></span><span>σω <output id="effective-omega">—</output></span><span>σγ <output id="effective-gamma">—</output></span></div>
+            <div class="effective-noise" aria-label="Effective command standard deviations"><span>σv <output id="effective-v">—</output></span><span>σω <output id="effective-omega">—</output></span><span>σγ <output id="effective-gamma">—</output></span></div>
           </fieldset>
-          <details><summary>Posa iniziale</summary><div id="pose-controls"></div></details>
-          <fieldset><legend>Esperimento</legend><div id="experiment-controls"></div></fieldset>
-          <button class="button primary run-button" id="run" type="submit"><span aria-hidden="true">▶</span> Esegui simulazione</button>
-          <div class="secondary-actions"><button class="button quiet" id="reset-parameters" type="button">Ripristina parametri</button><button class="button danger" id="cancel" type="button" hidden>Annulla</button></div>
+          <details><summary>Initial pose</summary><div id="pose-controls"></div></details>
+          <fieldset><legend>Experiment</legend><div id="experiment-controls"></div></fieldset>
+          <button class="button primary run-button" id="run" type="submit"><span aria-hidden="true">▶</span> Run simulation</button>
+          <div class="secondary-actions"><button class="button quiet" id="reset-parameters" type="button">Reset parameters</button><button class="button danger" id="cancel" type="button" hidden>Cancel</button></div>
           <p id="form-error" class="error" role="alert" hidden></p>
         </form>
       </aside>
-      <section class="results" aria-label="Risultati">
+      <section class="results" aria-label="Results">
         <div class="stage card">
-          <div class="stage-heading"><div><p class="eyebrow">VELOCITY MOTION MODEL</p><h2>Traiettoria e campioni</h2></div><span id="result-state" class="badge">In attesa di esecuzione</span></div>
-          <div class="legend"><span><i class="dot blue"></i>Campioni</span><span><i class="line orange"></i>Traiettoria nominale</span><span><i class="line purple"></i>Media campioni</span><span><i class="line pale"></i>Ellisse 95%*</span></div>
-          <div id="scene" class="scene" role="img" aria-label="Visualizzazione del moto sul piano x–y"><div id="scene-empty" class="empty-state"><span class="empty-icon" aria-hidden="true">↗</span><strong>Il prossimo passo, con incertezza.</strong><span>Premi Esegui per calcolare il modello in Python.</span></div></div>
-          <div class="scene-tools"><span id="renderer-status" class="hint">Preparazione della vista…</span><div><label><input id="show-headings" type="checkbox"> Orientamenti</label><button type="button" id="fit-view" class="button quiet">Adatta vista</button></div></div>
-          <div class="playback"><button id="play" class="button secondary" type="button" disabled>▶ Riproduci</button><label for="frame" class="sr-only">Passo visualizzato</label><input id="frame" type="range" min="0" max="1" step="1" value="0" disabled><output id="frame-label">t = —</output><label for="playback-speed" class="sr-only">Velocità riproduzione</label><select id="playback-speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
-          <p class="hint playback-note">La riproduzione usa i passi già calcolati. Non riesegue l’algoritmo.</p>
+          <div class="stage-heading"><div><p class="eyebrow">VELOCITY MOTION MODEL</p><h2>Trajectory and samples</h2></div><span id="result-state" class="badge">Waiting for a run</span></div>
+          <div class="legend"><span><i class="dot blue"></i>Samples</span><span><i class="line orange"></i>Nominal trajectory</span><span><i class="line purple"></i>Sample mean</span><span><i class="line pale"></i>95% ellipse</span></div>
+          <div id="scene" class="scene" role="img" aria-label="Motion visualization on the x–y plane"><div id="scene-empty" class="empty-state"><span class="empty-icon" aria-hidden="true">↗</span><strong>The next step, with uncertainty.</strong><span>Press Run to calculate the model in Python.</span></div></div>
+          <div class="scene-tools"><span id="renderer-status" class="hint">Preparing the view…</span><div><label><input id="show-headings" type="checkbox"> Headings</label><button type="button" id="fit-view" class="button quiet">Fit view</button></div></div>
+          <div class="playback"><button id="play" class="button secondary" type="button" disabled>▶ Play</button><label for="frame" class="sr-only">Displayed step</label><input id="frame" type="range" min="0" max="1" step="1" value="0" disabled><output id="frame-label">t = —</output><label for="playback-speed" class="sr-only">Playback speed</label><select id="playback-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+          <p class="hint playback-note">Playback uses steps already calculated. It does not rerun the algorithm.</p>
         </div>
-        <div id="execution-status" class="execution-status" role="status" aria-live="polite">Nessuna simulazione eseguita. Nessun calcolo Python parte automaticamente.</div>
+        <div id="execution-status" class="execution-status" role="status" aria-live="polite">No simulation has run. Python calculations do not start automatically.</div>
         <progress id="progress" max="1" value="0" hidden></progress>
-        <div class="metrics" aria-label="Statistiche finali dell’ultima esecuzione">
-          <div class="metric card"><span>Media finale x</span><strong id="mean-x">—</strong><small>m</small></div>
-          <div class="metric card"><span>Media finale y</span><strong id="mean-y">—</strong><small>m</small></div>
-          <div class="metric card"><span>σ posizione</span><strong id="position-sigma">—</strong><small>x / y · m</small></div>
-          <div class="metric card"><span>σ orientamento</span><strong id="heading-sigma">—</strong><small>circolare · rad</small></div>
+        <div class="metrics" aria-label="Final statistics from the latest run">
+          <div class="metric card"><span>Final mean x</span><strong id="mean-x">—</strong><small>m</small></div>
+          <div class="metric card"><span>Final mean y</span><strong id="mean-y">—</strong><small>m</small></div>
+          <div class="metric card"><span>Position σ</span><strong id="position-sigma">—</strong><small>x / y · m</small></div>
+          <div class="metric card"><span>Heading σ</span><strong id="heading-sigma">—</strong><small>circular · rad</small></div>
         </div>
-        <div class="distribution card"><div class="section-title"><div><h2>Distribuzione dell’orientamento</h2><p class="hint">Errore finale rispetto alla traiettoria nominale, riportato in [−π, π).</p></div><button class="button quiet" id="download" type="button" disabled>Scarica JSON ↓</button></div><canvas id="histogram" aria-label="Istogramma dell’errore di orientamento finale"></canvas></div>
-        <details class="card run-record"><summary>Parametri dell’ultima esecuzione</summary><p class="hint">Questi valori descrivono i grafici visualizzati, anche quando i controlli a sinistra sono stati modificati.</p><pre id="last-parameters">Nessuna esecuzione.</pre></details>
+        <div class="distribution card"><div class="section-title"><div><h2>Heading distribution</h2><p class="hint">Final error relative to the nominal trajectory, wrapped to [−π, π).</p></div><button class="button quiet" id="download" type="button" disabled>Download JSON ↓</button></div><canvas id="histogram" aria-label="Histogram of final heading error"></canvas></div>
+        <details class="card run-record"><summary>Parameters from the latest run</summary><p class="hint">These values describe the displayed plots, even if the controls on the left have changed.</p><pre id="last-parameters">No runs yet.</pre></details>
       </section>
     </div>
     <section id="how-it-works" class="explanation card">
-      <p class="eyebrow">DALLA TEORIA AL CODICE</p><h2>Che cosa stai osservando?</h2>
-      <div class="explanation-grid"><article><h3>1. Un comando, più esiti</h3><p>Il comando u = [v, ω] viene perturbato dal rumore. Ogni campione evolve dalla stessa posa iniziale con nuove perturbazioni a ogni passo Δt.</p></article><article><h3>2. La tua funzione Python</h3><p>Il browser esegue con Pyodide un’esportazione della funzione del repository, senza Matplotlib. Una forma equivalente e numericamente stabile gestisce anche ω = 0.</p></article><article><h3>3. Disegno e calcolo separati</h3><p>Three.js visualizza i risultati. Pan, zoom, orientamenti e riproduzione cambiano solo la vista; per calcolare nuovi risultati devi premere Esegui.</p></article></div>
-      <p class="hint">* Ellisse costruita dalla covarianza campionaria con fattore χ²₂ = 5,991: rappresenta il 95% per una distribuzione gaussiana bivariata. Una nube non gaussiana non garantisce questa copertura. Per mantenere la vista leggera vengono disegnati al massimo 1.500 campioni; le statistiche usano tutti i campioni.</p>
-      <p class="hint">Il primo avvio scarica Python e NumPy da un CDN. Nessun server esegue i tuoi esperimenti: i calcoli avvengono sul tuo dispositivo. Per hosting interamente su GitHub Pages è disponibile lo script di copia delle risorse descritto nelle istruzioni.</p>
+      <p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2>
+      <div class="theory-note"><h3>1. One command, many outcomes</h3><p>The command u = [v, ω] is perturbed by noise. Each sample starts from the same initial pose and receives new perturbations at every time step Δt.</p></div>
     </section>
-    <footer><span>Probabilistic Robotics · Velocity Lab</span><span id="source-info">Modello del repository · esecuzione locale nel browser</span></footer>
+    <footer><span>Probabilistic Robotics · Velocity Lab</span><span id="source-info">Repository model · runs locally in your browser</span></footer>
   </main>
-  <noscript>Questa applicazione richiede JavaScript e un browser con WebAssembly.</noscript>
+  <noscript>This application requires JavaScript and a browser with WebAssembly.</noscript>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
