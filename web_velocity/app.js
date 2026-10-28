@@ -25,6 +25,38 @@ const $ = id => document.getElementById(id);
 let scene = null, result = null, activeWorker = null, activeReject = null;
 let runId = 0, completed = 0, playing = false, animation = null;
 let lastParameters = null, provenance = null;
+let distributionObserver = null, observedDistributionCanvas = null;
+
+function distributionCanvas() {
+  let canvas = $('position-distribution') || $('histogram');
+  if (!canvas) {
+    const card = document.querySelector('.distribution');
+    if (!card) return null;
+    canvas = document.createElement('canvas');
+    card.append(canvas);
+  }
+  canvas.id = 'position-distribution';
+  canvas.setAttribute('aria-label', 'Histogram of sampled final x positions in meters');
+  if (distributionObserver && canvas !== observedDistributionCanvas) {
+    if (observedDistributionCanvas) distributionObserver.unobserve(observedDistributionCanvas);
+    distributionObserver.observe(canvas);
+    observedDistributionCanvas = canvas;
+  }
+  return canvas;
+}
+
+function positionDistribution(value) {
+  if (value.position_distribution) return value.position_distribution;
+  const samples = value.final_particles?.map(pose => pose[0]);
+  if (!samples?.length) throw new Error('No position samples were returned. Refresh the page and try again.');
+  const mean = samples.reduce((sum, x) => sum+x, 0)/samples.length;
+  const std_dev = Math.sqrt(samples.reduce((sum, x) => sum+(x-mean)**2, 0)/samples.length);
+  let low = Math.min(...samples), high = Math.max(...samples);
+  if (low === high) { low -= .5; high += .5; }
+  const bins = 100, width = (high-low)/bins, counts = Array(bins).fill(0);
+  samples.forEach(x => counts[Math.min(bins-1, Math.floor((x-low)/width))]++);
+  return {mean, std_dev, counts, edges: Array.from({length: bins+1}, (_, i) => low+i*width)};
+}
 
 function setStatus(text, error=false) {
   $('execution-status').textContent = text;
@@ -150,9 +182,10 @@ function renderResult(value, elapsed) {
   $('frame').max = result.frames.length-1; $('frame').disabled = false;
   $('play').disabled = false; $('download').disabled = false;
   displayFrame(result.frames.length-1);
-  const distribution = result.position_distribution;
-  $('distribution-stats').textContent = `mean = ${distribution.mean.toFixed(3)} m · std_dev = ${distribution.std_dev.toFixed(3)} m`;
-  drawPositionDistribution($('position-distribution'), distribution);
+  const distribution = positionDistribution(result);
+  result.position_distribution = distribution;
+  if ($('distribution-stats')) $('distribution-stats').textContent = `mean = ${distribution.mean.toFixed(3)} m · std_dev = ${distribution.std_dev.toFixed(3)} m`;
+  drawPositionDistribution(distributionCanvas(), distribution);
   $('last-parameters').textContent = JSON.stringify({parameters: lastParameters, runtime: result.runtime, source: provenance}, null, 2);
   setStatus(`Run ${completed} · ${result.sample_count} samples computed, ${result.shown_count} displayed · ${(elapsed/1000).toFixed(2)} s${completed === 1 ? ' (includes initial loading)' : ''}.`);
   refreshDraftStatus();
@@ -169,7 +202,7 @@ async function run(event) {
   const started = performance.now();
   try { renderResult(await execute(parameters), performance.now()-started); }
   catch (error) {
-    setStatus(`${error.message}. If the runtime does not load, check your connection and CDN access.`, true);
+    setStatus(error.message, true);
     activeWorker?.terminate(); activeWorker = null;
   } finally { $('run').disabled = false; $('cancel').hidden = true; $('progress').hidden = true; }
 }
@@ -197,8 +230,11 @@ function init() {
     const link = document.createElement('a'); link.href = url; link.download = `velocity-run-${completed}-seed-${result.parameters.seed}.json`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
-  const resize = () => drawPositionDistribution($('position-distribution'), result?.position_distribution);
-  new ResizeObserver(resize).observe($('position-distribution')); resize();
+  const resize = () => drawPositionDistribution(distributionCanvas(), result?.position_distribution);
+  const chart = distributionCanvas();
+  distributionObserver = new ResizeObserver(resize);
+  if (chart) { distributionObserver.observe(chart); observedDistributionCanvas = chart; }
+  resize();
   createScene($('scene')).then(view => {
     scene = view; $('renderer-status').textContent = `${view.mode} · drag to pan, scroll to zoom`;
     if (result) { scene.setResult(result); displayFrame(Number($('frame').value)); }

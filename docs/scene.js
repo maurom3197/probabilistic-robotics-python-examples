@@ -201,6 +201,7 @@ class MotionScene {
 }
 
 export function drawPositionDistribution(canvas, distribution) {
+  if (!canvas) return;
   const width = Math.max(canvas.clientWidth, 150), height = 180, ratio = Math.min(devicePixelRatio || 1, 2);
   canvas.width = width*ratio; canvas.height = height*ratio;
   const c = canvas.getContext('2d'); c.setTransform(ratio, 0, 0, ratio, 0, 0);
