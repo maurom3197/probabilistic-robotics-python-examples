@@ -11,6 +11,8 @@
 
 Python scripts for practical, educational examples of algorithms from *Probabilistic Robotics*. The examples simulate robot motion, measurements, localization, mapping, and SLAM.
 
+Try the interactive sessions on the [GitHub Page](https://maurom3197.github.io/probabilistic-robotics-python-examples/)!
+
 ## Repository organization
 
 | Directory | Contents |

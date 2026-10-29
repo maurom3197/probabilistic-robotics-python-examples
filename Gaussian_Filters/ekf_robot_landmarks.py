@@ -70,7 +70,7 @@ def run_localization_sim(
 
         # Simulate robot motion for sim_step_s seconds using the Motion Model.
         # the sampling motion model already include Gaussian noise on the command
-        sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, sigma_u, sim_step_s)
+        sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, np.zeros_like(sigma_u), sim_step_s)
         track.append(sim_pos)
 
         # to simulate the error in the odometry reading, we take another Gaussian sample of the velocity command
