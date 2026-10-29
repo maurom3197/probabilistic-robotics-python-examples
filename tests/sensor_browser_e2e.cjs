@@ -14,6 +14,17 @@ const {chromium} = require('playwright');
     assert.equal(await page.locator('#map-choice option').count(), 7);
     assert.equal(await page.getAttribute('#field-fov', 'min'), '1');
     assert.equal(await page.getAttribute('#field-fov', 'max'), '360');
+    for (const [id, min, max] of [['lm-sigma-range', '0.05', '1'], ['lm-sigma-bearing', '1', '45'], ['field-sigma', '0.05', '2']]) {
+      for (const control of [id, `${id}-slider`]) {
+        assert.equal(await page.getAttribute(`#${control}`, 'min'), min);
+        assert.equal(await page.getAttribute(`#${control}`, 'max'), max);
+        assert.equal(await page.getAttribute(`#${control}`, 'step'), '0.01');
+      }
+    }
+    await page.fill('#lm-sigma-range', '0.056');
+    await page.locator('#lm-sigma-range').dispatchEvent('change');
+    assert.equal(await page.inputValue('#lm-sigma-range'), '0.06');
+    assert.equal(await page.inputValue('#lm-sigma-range-slider'), '0.06');
     assert.match(await page.textContent('#landmark-state'), /Waiting for a run/);
     assert.match(await page.textContent('#field-state'), /Waiting for a run/);
     const blank = await page.locator('#landmark-detection-plot').evaluate(canvas => canvas.toDataURL());

@@ -1,18 +1,18 @@
 import {createScene, drawPositionDistribution} from './scene.js';
 
 export const PARAMETERS = [
-  ['v', 'Linear velocity v (m/s)', 0, 2, .8, 'command', .001],
-  ['omega', 'Angular velocity ω (rad/s)', -1.5, 1.5, .6, 'command', .001],
+  ['v', 'Linear velocity v (m/s)', 0, 2, .8, 'command', .01],
+  ['omega', 'Angular velocity ω (rad/s)', -1.5, 1.5, .6, 'command', .01],
   ['dt', 'Time step Δt (s)', .01, 1, .5, 'command', .001],
-  ['a1', 'α₁ · v² → σv', 0, 1, .001, 'alpha', .001],
-  ['a2', 'α₂ · ω² → σv', 0, 1, .01, 'alpha', .001],
-  ['a3', 'α₃ · v² → σω', 0, 1, .1, 'alpha', .001],
-  ['a4', 'α₄ · ω² → σω', 0, 1, .2, 'alpha', .001],
-  ['a5', 'α₅ · v² → σγ', 0, 1, .05, 'alpha', .001],
-  ['a6', 'α₆ · ω² → σγ', 0, 1, .05, 'alpha', .001],
-  ['sigma_v', 'σv (m/s)', 0, 1, .1, 'sigma', .001],
-  ['sigma_omega', 'σω (rad/s)', 0, 1, .1, 'sigma', .001],
-  ['sigma_gamma', 'σγ (rad/s)', 0, 1, .02, 'sigma', .001],
+  ['a1', 'α₁ · v² → σv', 0, 1, .01, 'alpha', .01],
+  ['a2', 'α₂ · ω² → σv', 0, 1, .01, 'alpha', .01],
+  ['a3', 'α₃ · v² → σω', 0, 1, .1, 'alpha', .01],
+  ['a4', 'α₄ · ω² → σω', 0, 1, .2, 'alpha', .01],
+  ['a5', 'α₅ · v² → σγ', 0, 1, .05, 'alpha', .01],
+  ['a6', 'α₆ · ω² → σγ', 0, 1, .05, 'alpha', .01],
+  ['sigma_v', 'σv (m/s)', 0, 1, .1, 'sigma', .01],
+  ['sigma_omega', 'σω (rad/s)', 0, 1, .1, 'sigma', .01],
+  ['sigma_gamma', 'σγ (rad/s)', 0, 1, .02, 'sigma', .01],
   ['x', 'Initial position x (m)', -10, 10, 2, 'pose', .001],
   ['y', 'Initial position y (m)', -10, 10, 4, 'pose', .001],
   ['theta', 'Initial orientation θ (rad)', -3.141, 3.141, 0, 'pose', .001],
@@ -68,7 +68,7 @@ function readParameters(focusInvalid = false) {
   for (const [key, label, low, high, , group, step] of PARAMETERS) {
     const input = $(key), value = input.valueAsNumber;
     const relevant = group !== 'alpha' && group !== 'sigma' || group === values.noise_mode;
-    if (relevant && (!Number.isFinite(value) || value < low || value > high || (step === 1 && !Number.isInteger(value)))) {
+    if (relevant && (!Number.isFinite(value) || value < low || value > high || (step === 1 && !Number.isInteger(value)) || (step === .01 && input.validity.stepMismatch))) {
       if (focusInvalid) input.focus();
       throw new Error(`${label}: enter ${step === 1 ? 'an integer' : 'a value'} between ${low} and ${high}.`);
     }
@@ -105,11 +105,12 @@ function createControls() {
     const row = document.createElement('div'); row.className = 'parameter-row';
     const header = document.createElement('div'); header.className = 'parameter-header';
     const text = document.createElement('label'); text.htmlFor = key; text.textContent = label;
-    const number = document.createElement('input'); Object.assign(number, {type: 'number', id: key, name: key, min: low, max: high, step, value: step === 1 ? String(initial) : initial.toFixed(3)});
+    const decimals = step === .01 ? 2 : 3;
+    const number = document.createElement('input'); Object.assign(number, {type: 'number', id: key, name: key, min: low, max: high, step, value: step === 1 ? String(initial) : initial.toFixed(decimals)});
     const range = document.createElement('input'); Object.assign(range, {type: 'range', id: `${key}-slider`, min: low, max: high, step, value: initial}); range.setAttribute('aria-label', `${label} · slider`);
     number.addEventListener('input', () => { if (Number.isFinite(number.valueAsNumber)) range.value = number.value; refreshDraftStatus(); });
-    number.addEventListener('change', () => { if (Number.isFinite(number.valueAsNumber) && step !== 1) { number.value = (Math.round(number.valueAsNumber*1000)/1000).toFixed(3); range.value = number.value; } refreshDraftStatus(); });
-    range.addEventListener('input', () => { number.value = step === 1 ? range.value : Number(range.value).toFixed(3); refreshDraftStatus(); });
+    number.addEventListener('change', () => { if (Number.isFinite(number.valueAsNumber) && step !== 1 && number.valueAsNumber >= low && number.valueAsNumber <= high) { number.value = (Math.round(number.valueAsNumber/step)*step).toFixed(decimals); range.value = number.value; } refreshDraftStatus(); });
+    range.addEventListener('input', () => { number.value = step === 1 ? range.value : Number(range.value).toFixed(decimals); refreshDraftStatus(); });
     header.append(text, number); row.append(header, range);
     const limits = document.createElement('div'); limits.className = 'range-limits';
     const left = document.createElement('span'), right = document.createElement('span'); left.textContent = String(low); right.textContent = String(high); limits.append(left, right); row.append(limits);

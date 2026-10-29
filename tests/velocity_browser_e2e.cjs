@@ -31,14 +31,18 @@ const {chromium} = require('playwright');
       assert.equal(await page.getAttribute(`#${id}`, 'max'), max);
     }
   }
+  for (const key of ['v', 'omega', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'sigma_v', 'sigma_omega', 'sigma_gamma']) {
+    for (const id of [key, `${key}-slider`]) assert.equal(await page.getAttribute(`#${id}`, 'step'), '0.01');
+  }
   assert.equal(await page.locator('#how-it-works .theory-note').count(), 1);
   assert.match(await page.locator('#how-it-works').innerText(), /One command, many outcomes/);
-  await page.fill('#v', '0.801');
+  await page.fill('#v', '0.806');
   await page.locator('#v').dispatchEvent('change');
   await page.waitForTimeout(500);
   assert.equal(await page.evaluate(() => window.createdWorkers), 0, 'Editing parameters must not start Python');
   assert.equal(await page.getAttribute('body', 'data-run-count'), '0');
-  assert.equal(await page.inputValue('#v-slider'), '0.801');
+  assert.equal(await page.inputValue('#v'), '0.81');
+  assert.equal(await page.inputValue('#v-slider'), '0.81');
   await page.selectOption('#noise-mode', 'sigma');
   for (const [key, value] of Object.entries({v: '.8', omega: '0', sigma_v: '0', sigma_omega: '0', sigma_gamma: '0', samples: '50', steps: '2'})) await page.fill('#'+key, value);
   await page.click('#run');

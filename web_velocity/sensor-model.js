@@ -11,8 +11,8 @@ const LANDMARK_POSE = [
 const LANDMARK_SENSOR = [
   ['lm-fov', 'Field of view (°)', 5, 360, 60, 1],
   ['lm-range', 'Maximum range (m)', .1, 20, 6, .1],
-  ['lm-sigma-range', 'Model σ range (m)', .001, 3, .3, .001],
-  ['lm-sigma-bearing', 'Model σ bearing (°)', .1, 90, 18, .1],
+  ['lm-sigma-range', 'Model σ range (m)', .05, 1, .3, .01],
+  ['lm-sigma-bearing', 'Model σ bearing (°)', 1, 45, 18, .01],
   ['lm-seed', 'Random seed', 0, 999999, 42, 1],
 ];
 const FIELD_POSE = [
@@ -25,7 +25,7 @@ const FIELD_SENSOR = [
   ['field-num-rays', 'Number of rays', 1, 360, 12, 1],
   ['field-max-range', 'Maximum range (cells)', .5, 30, 8, .1],
 ];
-const FIELD_SIGMA = [['field-sigma', 'Hit σ (cells)', .05, 5, .75, .01]];
+const FIELD_SIGMA = [['field-sigma', 'Hit σ (cells)', .05, 2, .75, .01]];
 const FIELD_WEIGHTS = [
   ['weight-hit', 'z_hit', 0, 1, .9, .01],
   ['weight-max', 'z_max', 0, 1, .05, .01],
@@ -41,11 +41,20 @@ function control(parent, [id, label, min, max, value, step], onChange) {
   const row=document.createElement('div'); row.className='parameter-row';
   const header=document.createElement('div'); header.className='parameter-header';
   const text=document.createElement('label'); text.htmlFor=id; text.textContent=label;
-  const number=document.createElement('input'); Object.assign(number,{type:'number',id,min,max,step,value:String(value)});
+  const number=document.createElement('input'); Object.assign(number,{type:'number',id,min,max,step,value:step===.01?value.toFixed(2):String(value)});
   const range=document.createElement('input'); Object.assign(range,{type:'range',id:`${id}-slider`,min,max,step,value:String(value)});
   range.setAttribute('aria-label',`${label} slider`);
   number.addEventListener('input',()=>{ if(Number.isFinite(number.valueAsNumber)) range.value=number.value; onChange(id); });
-  range.addEventListener('input',()=>{ number.value=range.value; onChange(id); });
+  if (id === 'lm-sigma-range' || id === 'lm-sigma-bearing' || id === 'field-sigma') {
+    number.addEventListener('change',()=>{
+      if (Number.isFinite(number.valueAsNumber) && number.valueAsNumber>=min && number.valueAsNumber<=max) {
+        number.value=(Math.round(number.valueAsNumber*100)/100).toFixed(2);
+        range.value=number.value;
+      }
+      onChange(id);
+    });
+  }
+  range.addEventListener('input',()=>{ number.value=step===.01?Number(range.value).toFixed(2):range.value; onChange(id); });
   header.append(text,number); row.append(header,range);
   const limits=document.createElement('div'); limits.className='range-limits';
   const left=document.createElement('span'),right=document.createElement('span'); left.textContent=String(min); right.textContent=String(max); limits.append(left,right); row.append(limits);
@@ -54,7 +63,8 @@ function control(parent, [id, label, min, max, value, step], onChange) {
 
 function readNumber(id, min, max, integer=false) {
   const input=$(id), n=input.valueAsNumber;
-  if (!Number.isFinite(n) || n<min || n>max || (integer && !Number.isInteger(n))) {
+  const sigma=id==='lm-sigma-range' || id==='lm-sigma-bearing' || id==='field-sigma';
+  if (!Number.isFinite(n) || n<min || n>max || (integer && !Number.isInteger(n)) || (sigma && input.validity.stepMismatch)) {
     input.focus(); throw new Error(`${input.labels?.[0]?.textContent || id}: enter ${integer?'an integer':'a value'} between ${min} and ${max}.`);
   }
   return n;
@@ -100,8 +110,8 @@ function readLandmark() {
   return {pose:[pose[0],pose[1],pose[2]*DEG], landmarks,
     fov:readNumber('lm-fov',5,360)*DEG,
     maxRange:readNumber('lm-range',.1,20),
-    sigmaRange:readNumber('lm-sigma-range',.001,3),
-    sigmaBearing:readNumber('lm-sigma-bearing',.1,90)*DEG,
+    sigmaRange:readNumber('lm-sigma-range',.05,1),
+    sigmaBearing:readNumber('lm-sigma-bearing',1,45)*DEG,
     seed:readNumber('lm-seed',0,999999,true)};
 }
 
@@ -164,7 +174,7 @@ function readField() {
   const fov=readNumber('field-fov',1,360)*DEG;
   const numRays=readNumber('field-num-rays',1,360,true);
   const maxRange=readNumber('field-max-range',.5,30);
-  const sigmaHit=readNumber('field-sigma',.05,5);
+  const sigmaHit=readNumber('field-sigma',.05,2);
   const weights=FIELD_WEIGHTS.slice(0,3).map(([id,,min,max])=>readNumber(id,min,max));
   if (weights.every(w=>w===0)) throw new Error('Enter at least one positive mixture weight.');
   return {mapFile:$('map-choice').value,pose:[pose[0],pose[1],pose[2]*DEG],fov,numRays,maxRange,sigmaHit,weights,
