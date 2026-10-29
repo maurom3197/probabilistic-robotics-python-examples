@@ -1,20 +1,25 @@
 import {EKF_LANDMARKS} from './gaussian-filters-core.js?v=3';
 
 const $=id=>document.getElementById(id);
-const LIMIT=20,MAX_POINTS=20;
-const validPoint=point=>Array.isArray(point)&&point.length===2&&point.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=-LIMIT&&value<=LIMIT);
+const MAX_POINTS=20;
 const copy=points=>points.map(point=>[...point]);
-const clamp=value=>Math.max(-LIMIT,Math.min(LIMIT,value));
 
-export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,downloadName='ekf-landmark-map.json'}={}){
-  let points=copy(defaultLandmarks);
+export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,downloadName='ekf-landmark-map.json',gridMap=null}={}){
+  let points=copy(defaultLandmarks),map=gridMap,clickMode='landmark';
   const host=$('ekf-landmark-rows'),canvas=$('ekf-landmark-map'),error=$('ekf-map-error');
+  const bounds=axis=>map?[0,(axis===0?map.rows:map.cols)-.1]:[-20,20];
+  const inBounds=(value,axis)=>Number.isFinite(value)&&value>=bounds(axis)[0]&&value<=bounds(axis)[1];
+  const validPoint=point=>Array.isArray(point)&&point.length===2&&point.every(inBounds);
+  const clamp=(value,axis)=>Math.max(bounds(axis)[0],Math.min(bounds(axis)[1],value));
+  const number=value=>Number(value.toFixed(1));
   function showError(message){error.textContent=message;error.hidden=!message;}
   function geometry(width,height){
-    const left=27,right=12,top=12,bottom=26;
-    return {left,top,plotW:width-left-right,plotH:height-top-bottom,
-      toX:x=>left+(x+LIMIT)/(2*LIMIT)*(width-left-right),
-      toY:y=>height-bottom-(y+LIMIT)/(2*LIMIT)*(height-top-bottom)};
+    const left=29,right=12,top=12,bottom=27,plotW=width-left-right,plotH=height-top-bottom;
+    const xMin=map?0:-20,xMax=map?map.rows:20,yMin=map?0:-20,yMax=map?map.cols:20;
+    return {left,top,plotW,plotH,
+      toX:x=>left+(x-xMin)/(xMax-xMin)*plotW,
+      toY:y=>height-bottom-(y-yMin)/(yMax-yMin)*plotH,
+      toWorld:(px,py)=>[xMin+(px-left)/plotW*(xMax-xMin),yMin+(height-bottom-py)/plotH*(yMax-yMin)]};
   }
   function draw(){
     const rect=canvas.getBoundingClientRect(),width=Math.max(1,rect.width),height=Math.max(1,rect.height);
@@ -24,20 +29,34 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
     ctx.fillStyle='#fbfdff';ctx.fillRect(0,0,width,height);
     const g=geometry(width,height);
     ctx.font='10px Inter, system-ui, sans-serif';ctx.lineWidth=1;
-    for(let n=-20;n<=20;n+=10){
-      const x=g.toX(n),y=g.toY(n);
-      ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.plotH);ctx.moveTo(g.left,y);ctx.lineTo(g.left+g.plotW,y);
-      ctx.strokeStyle=n===0?'#b9c8da':'#e6edf6';ctx.stroke();
-      ctx.fillStyle='#64748b';ctx.textAlign='center';ctx.fillText(String(n),x,height-6);
-      ctx.textAlign='right';ctx.fillText(String(n),g.left-5,y+3);
+    if(map){
+      for(let x=0;x<map.rows;x++)for(let y=0;y<map.cols;y++){
+        ctx.fillStyle=map.cells[x][y]===1?'#2d394d':map.cells[x][y]===-1?'#a4adb8':'#fff';
+        ctx.fillRect(g.toX(x),g.toY(y+1),g.plotW/map.rows+.3,g.plotH/map.cols+.3);
+      }
+      ctx.strokeStyle='#dbe4f0';
+      for(let x=0;x<=map.rows;x+=2){ctx.beginPath();ctx.moveTo(g.toX(x),g.top);ctx.lineTo(g.toX(x),g.top+g.plotH);ctx.stroke();}
+      for(let y=0;y<=map.cols;y+=2){ctx.beginPath();ctx.moveTo(g.left,g.toY(y));ctx.lineTo(g.left+g.plotW,g.toY(y));ctx.stroke();}
+      ctx.fillStyle='#64748b';
+      ctx.textAlign='center';for(let x=0;x<=map.rows;x+=5)ctx.fillText(String(x),g.toX(x),height-6);
+      ctx.textAlign='right';for(let y=0;y<=map.cols;y+=5)ctx.fillText(String(y),g.left-5,g.toY(y)+3);
+    }else{
+      for(let n=-20;n<=20;n+=10){
+        const x=g.toX(n),y=g.toY(n);
+        ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.plotH);ctx.moveTo(g.left,y);ctx.lineTo(g.left+g.plotW,y);
+        ctx.strokeStyle=n===0?'#b9c8da':'#e6edf6';ctx.stroke();
+        ctx.fillStyle='#64748b';ctx.textAlign='center';ctx.fillText(String(n),x,height-6);
+        ctx.textAlign='right';ctx.fillText(String(n),g.left-5,y+3);
+      }
     }
     points.forEach((point,index)=>{
+      if(!point.every(inBounds))return;
       const x=g.toX(point[0]),y=g.toY(point[1]);
       ctx.fillStyle='#2454d7';ctx.fillRect(x-4,y-4,8,8);
       ctx.textAlign='left';ctx.fillStyle='#17243d';ctx.fillText(String(index+1),x+6,y-5);
     });
     const startX=$('startX').valueAsNumber,startY=$('startY').valueAsNumber,heading=$('startTheta').valueAsNumber;
-    if(Number.isFinite(startX)&&Number.isFinite(startY)&&Number.isFinite(heading)&&Math.abs(startX)<=LIMIT&&Math.abs(startY)<=LIMIT){
+    if(inBounds(startX,0)&&inBounds(startY,1)&&Number.isFinite(heading)){
       const x=g.toX(startX),y=g.toY(startY),angle=heading*Math.PI/180;
       const dx=Math.cos(angle),dy=-Math.sin(angle),px=-dy,py=dx;
       ctx.beginPath();ctx.moveTo(x+13*dx,y+13*dy);
@@ -53,21 +72,10 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
       const name=document.createElement('span');name.textContent='Landmark '+(index+1);row.append(name);
       for(let axis=0;axis<2;axis++){
         const input=document.createElement('input');
-        Object.assign(input,{type:'number',min:-LIMIT,max:LIMIT,step:.1,value:point[axis].toFixed(1),id:'ekf-landmark-'+index+'-'+axis});
-        input.setAttribute('aria-label','Landmark '+(index+1)+' '+(axis===0?'x':'y')+' position in meters');
-        input.addEventListener('input',()=>{
-          if(Number.isFinite(input.valueAsNumber)&&input.valueAsNumber>=-LIMIT&&input.valueAsNumber<=LIMIT){
-            points[index][axis]=input.valueAsNumber;draw();
-          }
-          onChange();
-        });
-        input.addEventListener('change',()=>{
-          if(Number.isFinite(input.valueAsNumber)&&input.valueAsNumber>=-LIMIT&&input.valueAsNumber<=LIMIT){
-            input.value=(Math.round(input.valueAsNumber*10)/10).toFixed(1);
-            points[index][axis]=input.valueAsNumber;draw();
-          }
-          onChange();
-        });
+        Object.assign(input,{type:'number',min:bounds(axis)[0],max:bounds(axis)[1],step:.1,value:point[axis].toFixed(1),id:'ekf-landmark-'+index+'-'+axis});
+        input.setAttribute('aria-label','Landmark '+(index+1)+' '+(axis===0?'x':'y')+' position in '+(map?'map cells':'meters'));
+        input.addEventListener('input',()=>{if(inBounds(input.valueAsNumber,axis)){points[index][axis]=input.valueAsNumber;draw();}onChange();});
+        input.addEventListener('change',()=>{if(inBounds(input.valueAsNumber,axis)){input.value=number(input.valueAsNumber).toFixed(1);points[index][axis]=input.valueAsNumber;draw();}onChange();});
         row.append(input);
       }
       const remove=document.createElement('button');remove.type='button';remove.className='button quiet';
@@ -78,8 +86,8 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
     draw();
   }
   function setPoints(value){
-    if(!Array.isArray(value)||value.length>MAX_POINTS||!value.every(validPoint))throw new Error('Map must contain up to 20 [x, y] points between −20 and 20 m.');
-    points=value.map(point=>point.map(coordinate=>Math.round(coordinate*10)/10));render();showError('');onChange();
+    if(!Array.isArray(value)||value.length>MAX_POINTS||!value.every(validPoint))throw new Error('Map must contain up to 20 valid [x, y] points within the displayed map.');
+    points=value.map(point=>point.map(number));render();showError('');onChange();
   }
   function add(point){
     if(points.length>=MAX_POINTS){showError('The map can contain at most 20 landmarks.');return;}
@@ -88,43 +96,47 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
   function read(){
     return Array.from(host.children,(row,index)=>Array.from(row.querySelectorAll('input'),(input,axis)=>{
       const value=input.valueAsNumber;
-      if(!Number.isFinite(value)||value< -LIMIT||value>LIMIT||input.validity.stepMismatch){
-        input.focus();throw new Error('Landmark '+(index+1)+' '+(axis===0?'x':'y')+': enter a value from −20 to 20 in 0.1 m steps.');
-      }
+      if(!inBounds(value,axis)||input.validity.stepMismatch){input.focus();throw new Error('Landmark '+(index+1)+' '+(axis===0?'x':'y')+' must be within the displayed map in 0.1 steps.');}
       return value;
     }));
   }
-  function signature(){
-    return JSON.stringify(Array.from(host.children,row=>Array.from(row.querySelectorAll('input'),input=>input.value)));
-  }
+  function signature(){return JSON.stringify(Array.from(host.children,row=>Array.from(row.querySelectorAll('input'),input=>input.value)));}
   function readPose(){
-    const values=[['startX',-20,20],['startY',-20,20],['startTheta',-180,180]].map(([id,min,max])=>{
-      const input=$(id),value=input.valueAsNumber;
-      if(!Number.isFinite(value)||value<min||value>max||input.validity.stepMismatch){
-        input.focus();throw new Error('Robot starting pose: enter valid x, y, and heading values.');
-      }
+    const values=['startX','startY','startTheta'].map((id,axis)=>{
+      const input=$(id),value=input.valueAsNumber,valid=axis===2?Number.isFinite(value)&&Math.abs(value)<=180:inBounds(value,axis);
+      if(!valid||input.validity.stepMismatch){input.focus();throw new Error('Robot starting pose must be within the displayed map.');}
       return value;
     });
     return {x:values[0],y:values[1],headingDegrees:values[2]};
   }
   function setPose(value){
-    if(!value||typeof value!=='object'||!Number.isFinite(value.x)||!Number.isFinite(value.y)||!Number.isFinite(value.headingDegrees)||Math.abs(value.x)>LIMIT||Math.abs(value.y)>LIMIT||Math.abs(value.headingDegrees)>180){
-      throw new Error('Robot start must contain x and y from −20 to 20 m and heading from −180° to 180°.');
-    }
+    if(!value||typeof value!=='object'||!inBounds(value.x,0)||!inBounds(value.y,1)||!Number.isFinite(value.headingDegrees)||Math.abs(value.headingDegrees)>180)throw new Error('Robot start must be within the displayed map.');
     for(const [id,raw,decimals] of [['startX',value.x,1],['startY',value.y,1],['startTheta',value.headingDegrees,2]]){
-      const rounded=Number(raw.toFixed(decimals));
-      $(id).value=rounded.toFixed(decimals);$(id+'-slider').value=String(rounded);
+      const rounded=Number(raw.toFixed(decimals));$(id).value=rounded.toFixed(decimals);$(id+'-slider').value=String(rounded);
     }
     draw();onChange();
   }
-  $('ekf-add-landmark').addEventListener('click',()=>add([0,0]));
+  function setGridMap(value){map=value;render();showError('');}
+  function setClickMode(value){
+    clickMode=value;
+    for(const [id,mode] of [['ekf-click-landmark','landmark'],['ekf-click-robot','robot']]){
+      const button=$(id);if(button){button.setAttribute('aria-pressed',String(mode===value));button.classList.toggle('active',mode===value);}
+    }
+  }
+  $('ekf-add-landmark').addEventListener('click',()=>add(map?[.5,.5]:[0,0]));
   $('ekf-reset-landmarks').addEventListener('click',()=>setPoints(defaultLandmarks));
   $('ekf-clear-landmarks').addEventListener('click',()=>setPoints([]));
+  $('ekf-click-landmark')?.addEventListener('click',()=>setClickMode('landmark'));
+  $('ekf-click-robot')?.addEventListener('click',()=>setClickMode('robot'));
   canvas.addEventListener('click',event=>{
+    if(map===null&&clickMode==='robot')return;
     const rect=canvas.getBoundingClientRect(),g=geometry(rect.width,rect.height);
-    const x=clamp((event.clientX-rect.left-g.left)/g.plotW*2*LIMIT-LIMIT);
-    const y=clamp((g.top+g.plotH-(event.clientY-rect.top))/g.plotH*2*LIMIT-LIMIT);
-    add([Math.round(x*10)/10,Math.round(y*10)/10]);
+    const [rawX,rawY]=g.toWorld(event.clientX-rect.left,event.clientY-rect.top);
+    const x=number(clamp(rawX,0)),y=number(clamp(rawY,1));
+    if(clickMode==='robot'){
+      if(map.cells[Math.floor(x)][Math.floor(y)]!==0){showError('Choose a free map cell for the robot.');return;}
+      setPose({x,y,headingDegrees:$('startTheta').valueAsNumber});showError('');
+    }else add([x,y]);
   });
   $('ekf-save-map').addEventListener('click',()=>{
     try{
@@ -139,20 +151,19 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
     const file=event.target.files?.[0];if(!file)return;
     try{
       const parsed=JSON.parse(await file.text()),landmarks=Array.isArray(parsed)?parsed:parsed.landmarks;
-      if(!Array.isArray(landmarks)||landmarks.length>MAX_POINTS||!landmarks.every(validPoint))throw new Error('Map must contain up to 20 [x, y] points between −20 and 20 m.');
+      if(!Array.isArray(landmarks)||landmarks.length>MAX_POINTS||!landmarks.every(validPoint))throw new Error('Map must contain up to 20 landmarks within the displayed map.');
       if(!Array.isArray(parsed)&&parsed.startPose!==undefined){
         const pose=parsed.startPose;
-        if(!pose||!Number.isFinite(pose.x)||!Number.isFinite(pose.y)||!Number.isFinite(pose.headingDegrees)||Math.abs(pose.x)>LIMIT||Math.abs(pose.y)>LIMIT||Math.abs(pose.headingDegrees)>180)throw new Error('Invalid robot starting pose in map file.');
+        if(!pose||!inBounds(pose.x,0)||!inBounds(pose.y,1)||!Number.isFinite(pose.headingDegrees)||Math.abs(pose.headingDegrees)>180)throw new Error('Invalid robot starting pose in map file.');
       }
       setPoints(landmarks);
       if(!Array.isArray(parsed)&&parsed.startPose!==undefined)setPose(parsed.startPose);
-    }
-    catch(cause){showError(cause.message);}
+    }catch(cause){showError(cause.message);}
     event.target.value='';
   });
   for(const id of ['startX','startY','startTheta'])for(const suffix of ['', '-slider'])$(id+suffix).addEventListener('input',draw);
   if('ResizeObserver' in window)new ResizeObserver(draw).observe(canvas);
   else window.addEventListener('resize',draw);
-  render();
-  return {read,signature,readPose,draw};
+  render();setClickMode('landmark');
+  return {read,signature,readPose,draw,setGridMap};
 }

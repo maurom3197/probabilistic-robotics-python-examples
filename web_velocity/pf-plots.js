@@ -68,7 +68,7 @@ export function drawPfTrajectory(canvas,result,index){
   mapBase(c,result.map,g);
   c.save();c.beginPath();c.rect(g.left,g.top,g.width,g.height);c.clip();
   const latestCloud=result.frames.slice(0,index+1).reverse().find(frame=>frame.cloud)?.cloud||[];
-  for(const point of latestCloud)dot(c,g.toX(point[0]),g.toY(point[1]),1.7,'#8156c555');
+  for(const point of latestCloud)dot(c,g.toX(point[0]),g.toY(point[1]),2,'#8156c588');
   if(result.mode==='landmark'){
     const detected=new Set(f.detected);
     result.landmarks.forEach((point,i)=>{
@@ -88,7 +88,6 @@ export function drawPfTrajectory(canvas,result,index){
   }
   const frames=result.frames.slice(0,index+1);
   path(c,frames.map(item=>[g.toX(item.truth[0]),g.toY(item.truth[1])]),C.truth,2.3);
-  path(c,frames.map(item=>[g.toX(item.odometry[0]),g.toY(item.odometry[1])]),C.odom,1.7,[5,4]);
   path(c,frames.filter((item,i)=>i===0||item.update).map(item=>[g.toX(item.estimate[0]),g.toY(item.estimate[1])]),C.pf,2.3);
   for(const snapshotIndex of result.snapshotIndices){
     if(snapshotIndex>index)continue;
@@ -104,14 +103,14 @@ export function drawPfTrajectory(canvas,result,index){
     if(f.prior)ellipse(c,f.prior.mean,f.prior.covariance,g,'#65758c',true);
     if(!f.prior||result.mode==='laser'||f.detected.length)ellipse(c,f.estimate,f.covariance,g,f.update?C.green:'#bba5dc');
   }
-  robot(c,f.truth,g,C.truth);robot(c,f.odometry,g,C.odom);robot(c,f.estimate,g,C.pf);
+  robot(c,f.truth,g,C.truth);robot(c,f.estimate,g,C.pf);
   c.restore();
 }
 export function drawPfError(canvas,result,index){
   const {c,width,height}=surface(canvas);
   if(!result){c.fillStyle=C.muted;c.textAlign='center';c.fillText('Run the particle filter to see position error.',width/2,height/2);return;}
   const left=55,right=18,top=18,bottom=38,plotW=width-left-right,plotH=height-top-bottom;
-  const duration=result.frames.at(-1).time,maxError=Math.max(.2,...result.pfErrors.map(p=>p.error),...result.odometryErrors.map(p=>p.error))*1.12;
+  const duration=result.frames.at(-1).time,maxError=Math.max(.2,...result.pfErrors.map(p=>p.error),...result.simGtErrors.map(p=>p.error))*1.12;
   const x=t=>left+t/duration*plotW,y=e=>height-bottom-e/maxError*plotH;
   for(let i=0;i<=4;i++){
     const e=i*maxError/4,py=y(e);path(c,[[left,py],[width-right,py]],C.grid,1);
@@ -121,11 +120,11 @@ export function drawPfError(canvas,result,index){
   }
   c.textAlign='center';c.fillText('time [s]',width/2,height-5);
   c.save();c.translate(12,height/2);c.rotate(-Math.PI/2);c.fillText('position error [cells]',0,0);c.restore();
-  path(c,result.odometryErrors.map(p=>[x(p.time),y(p.error)]),C.odom,1.8);
+  path(c,result.simGtErrors.map(p=>[x(p.time),y(p.error)]),C.odom,1.8);
   path(c,result.pfErrors.map(p=>[x(p.time),y(p.error)]),C.pf,2.3);
   const current=result.frames[index],px=x(current.time);
   path(c,[[px,top],[px,height-bottom]],'#2454d788',1,[3,3]);
-  dot(c,px,y(current.odometryError),4,C.odom);
+  dot(c,px,y(current.simGtError),4,C.odom);
   if(current.update)dot(c,px,y(current.pfError),4,C.pf);
 }
 export function drawPfMapPreview(canvas,map,pose){

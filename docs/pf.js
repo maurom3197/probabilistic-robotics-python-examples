@@ -1,6 +1,6 @@
-import {PF_LANDMARKS,loadPfMap,nearestPfFree,runPfSimulation} from './pf-core.js';
-import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js';
-import {createLandmarkEditor} from './gaussian-filters-map.js?v=3';
+import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=2';
+import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=2';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=4';
 
 const $=id=>document.getElementById(id),DEG=Math.PI/180;
 const DEFINITIONS=[
@@ -12,8 +12,8 @@ const DEFINITIONS=[
   ['lm-max-range','Maximum range (cells)',.1,20,8,.1,'lm-sensor-controls','maxRange'],
   ['lm-sigma-range','Range σ (cells)',.05,1,.1,.01,'lm-sensor-controls','sigmaRange'],
   ['lm-sigma-bearing','Bearing σ (°)',1,45,1,.01,'lm-sensor-controls','sigmaBearing'],
-  ['startX','Start x / map row',-20,20,19,.1,'ekf-start-pose-controls','startX'],
-  ['startY','Start y / map column',-20,20,2,.1,'ekf-start-pose-controls','startY'],
+  ['startX','Start x / map row',0,21.9,19,.1,'ekf-start-pose-controls','startX'],
+  ['startY','Start y / map column',0,21.9,2,.1,'ekf-start-pose-controls','startY'],
   ['startTheta','Start heading θ (°)',-180,180,120,.01,'ekf-start-pose-controls','startTheta'],
   ['lm-pf-dt','PF interval (s)',.1,1,1,.1,'lm-experiment-controls','pfDt'],
   ['lm-duration','Duration (s)',2,60,28,1,'lm-experiment-controls','duration'],
@@ -111,9 +111,15 @@ async function selectMap(mode){
     if(request!==s.request)return;
     s.map=map;
     const ids=mode==='lm'?['startX','startY']:['laser-x','laser-y'];
+    ids.forEach((id,axis)=>{
+      const max=(axis===0?map.rows:map.cols)-.1;
+      $(id).min='0';$(id).max=String(max);
+      $(id+'-slider').min='0';$(id+'-slider').max=String(max);
+    });
+    if(mode==='lm')editor?.setGridMap(map);
     const pose=ids.map(id=>$(id).valueAsNumber);
     if(!freePose(map,pose)){
-      const candidates=mode==='lm'?map.free.filter(([x,y])=>x+.5<=20&&y+.5<=20):map.free;
+      const candidates=map.free;
       const nearest=candidates.reduce((best,[x,y])=>{
         const d=(x+.5-pose[0])**2+(y+.5-pose[1])**2;
         return !best||d<best.d?{x:x+.5,y:y+.5,d}:best;
@@ -145,7 +151,7 @@ function display(mode,index){
     ? 'Latest update: '+sensor+' · effective particles '+latest.neff.toFixed(0)+(latest.resampled?' · resampled':'')+'.'
     : 'Particles are distributed over the map before the first filter update.';
   $(mode+'-pf-error').textContent=f.pfError.toFixed(2);
-  $(mode+'-odom-error').textContent=f.odometryError.toFixed(2);
+  $(mode+'-sim-gt-error').textContent=f.simGtError.toFixed(2);
   $(mode+'-sigma').textContent=Math.sqrt(Math.max(0,f.covariance[0][0])).toFixed(2)+' / '+Math.sqrt(Math.max(0,f.covariance[1][1])).toFixed(2);
   $(mode+'-neff').textContent=latest?latest.neff.toFixed(0):String(result.parameters.particles);
   drawPfTrajectory($(mode+'-trajectory'),result,s.index);

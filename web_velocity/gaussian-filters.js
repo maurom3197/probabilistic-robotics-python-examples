@@ -1,6 +1,6 @@
 import {runEkfSimulation} from './gaussian-filters-core.js?v=3';
 import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=3';
-import {createLandmarkEditor} from './gaussian-filters-map.js?v=3';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=4';
 
 const PARAMETERS=[
   ['v','Linear velocity v (m/s)',0,2,.8,.01,'command'],

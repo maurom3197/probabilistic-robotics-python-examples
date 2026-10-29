@@ -8,3 +8,6 @@
 #pf-landmark .landmark-list-heading{grid-template-columns:1fr 64px 64px 24px}
 #lm-form details,#laser-form details{margin-bottom:19px}
 @media(max-width:720px){.pf-canvas{height:340px}.pf-error-canvas{height:250px}}
+
+#pf-landmark .pf-grid-map .ekf-map-canvas{height:300px}
+.pf-placement-tools .button[aria-pressed="true"]{background:#2454d7;color:#fff;border-color:#2454d7}

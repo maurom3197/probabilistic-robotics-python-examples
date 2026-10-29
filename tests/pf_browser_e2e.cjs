@@ -9,7 +9,8 @@ const {chromium}=require('playwright');
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     const base=process.env.LAB_URL||'http://127.0.0.1:8765/';
     await page.goto(new URL('discrete-filters.html',base).href,{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#ekf-landmark-15-1');
+    await page.waitForSelector('#ekf-landmark-9-1');
+    await page.waitForFunction(()=>document.querySelector('#startX')?.min==='0');
     assert.equal(await page.getAttribute('html','lang'),'en');
     assert.equal(await page.locator('.sensor-experiment').count(),2);
     assert.equal(await page.locator('#lm-map-choice option').count(),7);
@@ -19,7 +20,7 @@ const {chromium}=require('playwright');
       ['lm-sigma-v','0','1','0.01'],['lm-sigma-omega','0','1','0.01'],
       ['lm-sigma-range','0.05','1','0.01'],['lm-sigma-bearing','1','45','0.01'],
       ['laser-sigma-hit','0.05','2','0.01'],['laser-fov','1','360','1'],
-      ['laser-num-rays','1','360','1'],['startX','-20','20','0.1']
+      ['laser-num-rays','1','360','1'],['startX','0','21.9','0.1']
     ]){
       for(const control of [id,id+'-slider']){
         assert.equal(await page.getAttribute('#'+control,'min'),min);
@@ -35,20 +36,30 @@ const {chromium}=require('playwright');
       const first=runPfSimulation(p,landmarkMap),second=runPfSimulation(p,landmarkMap);
       const laser=runPfSimulation({...common,mode:'laser',v:.33,omega:0,sigmaV:.05,sigmaOmega:.02,fov:360,
         initialPose:[19.5,4.5,5*Math.PI/6],numRays:12,sigmaLaser:.1,sigmaHit:1,weightHit:.8,weightMax:0,weightRand:.2},laserMap);
-      return {landmarks:PF_LANDMARKS.length,maps:[landmarkMap.rows,laserMap.rows],frames:[first.frames.length,laser.frames.length],
+      const validLandmarks=PF_LANDMARKS.every(([x,y])=>{
+        const row=Math.floor(x),col=Math.floor(y),cells=landmarkMap.cells;
+        return cells[row][col]===1&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>cells[row+dx]?.[col+dy]===0);
+      });
+      const larger=runPfSimulation({...p,particles:600,duration:2},landmarkMap);
+      return {landmarks:PF_LANDMARKS.length,validLandmarks,cloud:larger.frames[0].cloud.length,maps:[landmarkMap.rows,laserMap.rows],frames:[first.frames.length,laser.frames.length],
         updates:[first.pfErrors.length,laser.pfErrors.length],
         detected:first.frames.reduce((n,f)=>n+f.detected.length,0),
         laserRays:laser.frames.find(f=>f.rays)?.rays.length,
         deterministic:JSON.stringify(first.pfErrors)===JSON.stringify(second.pfErrors),
-        finite:[first,laser].every(run=>run.frames.every(f=>f.estimate.every(Number.isFinite)))};
+        finite:[first,laser].every(run=>run.frames.every(f=>f.estimate.every(Number.isFinite))),
+        simGtErrors:[first.simGtErrors.length,laser.simGtErrors.length],
+        noOdometry:[first,laser].every(run=>!('odometry' in run.frames[0]))};
     });
-    assert.equal(model.landmarks,16);
+    assert.equal(model.landmarks,10);
+    assert.ok(model.validLandmarks);
+    assert.equal(model.cloud,500);
     assert.deepEqual(model.maps,[22,22]);
     assert.deepEqual(model.frames,[41,41]);
     assert.deepEqual(model.updates,[4,4]);
     assert.ok(model.detected>0);
     assert.equal(model.laserRays,12);
-    assert.ok(model.deterministic&&model.finite);
+    assert.ok(model.deterministic&&model.finite&&model.noOdometry);
+    assert.deepEqual(model.simGtErrors,[41,41]);
 
     const blank=await page.locator('#lm-trajectory').evaluate(canvas=>canvas.toDataURL());
     await page.fill('#lm-duration','8');
@@ -64,8 +75,16 @@ const {chromium}=require('playwright');
     assert.equal(await page.locator('#ekf-landmark-rows .ekf-landmark-row').count(),0);
     assert.match(await page.textContent('#lm-state'),/Parameters changed/);
     await page.click('#ekf-reset-landmarks');
-    assert.equal(await page.locator('#ekf-landmark-rows .ekf-landmark-row').count(),16);
+    assert.equal(await page.locator('#ekf-landmark-rows .ekf-landmark-row').count(),10);
 
+    await page.click('#ekf-click-robot');
+    assert.equal(await page.getAttribute('#ekf-click-robot','aria-pressed'),'true');
+    await page.locator('#ekf-landmark-map').evaluate(canvas=>{
+      const r=canvas.getBoundingClientRect(),x=r.left+29+19.5/22*(r.width-41),y=r.top+r.height-27-2.5/22*(r.height-39);
+      canvas.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
+    });
+    assert.equal(await page.inputValue('#startX'),'19.5');
+    assert.equal(await page.inputValue('#startY'),'2.5');
     await page.fill('#laser-duration','4');
     await page.fill('#laser-particles','100');
     await page.fill('#laser-num-rays','12');

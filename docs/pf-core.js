@@ -1,7 +1,6 @@
 export const PF_LANDMARKS=[
-  [10.5,12.5],[10.5,13.5],[19.5,7.5],[19.5,8.5],[19.5,9.5],[18.5,9.5],
-  [10.5,16.5],[11.5,16.5],[12.5,16.5],[16.5,16.5],[17.5,16.5],
-  [9.5,7.5],[11.5,4.5],[15.5,2.5],[.5,12.5],[.5,16.5],
+  [19.5,7.5],[19.5,9.5],[18.5,9.5],[11.5,4.5],[9.5,5.5],
+  [9.5,7.5],[10.5,12.5],[10.5,13.5],[7.5,7.5],[5.5,7.5],
 ];
 export const PF_MAP_FILES=['map0.png','map1.png','map2.png','map3.png','map31.png','map31_grey.png','map4.png'];
 const TAU=2*Math.PI,DEG=Math.PI/180;
@@ -114,8 +113,7 @@ function resample(particles,weights,rng,stratified){
   return next;
 }
 function snapshotCloud(particles){
-  const stride=Math.max(1,Math.ceil(particles.length/350));
-  return particles.filter((_,index)=>index%stride===0).map(p=>[p[0],p[1]]);
+  return particles.slice(0,500).map(p=>[p[0],p[1]]);
 }
 function landmarkMeasurement(pose,landmark,p,rng){
   const dx=landmark[0]-pose[0],dy=landmark[1]-pose[1];
@@ -168,10 +166,10 @@ function applyLaser(particles,logWeights,rays,p,map){
   }
   return valid.length;
 }
-function makeFrame(time,truth,odometry,estimateState,detected,update,prior,cloud,rays,neff,resampled){
-  return {time,truth:[...truth],odometry:[...odometry],estimate:[...estimateState.mean],
+function makeFrame(time,truth,nominal,estimateState,detected,update,prior,cloud,rays,neff,resampled){
+  return {time,truth:[...truth],nominal:[...nominal],estimate:[...estimateState.mean],
     covariance:estimateState.covariance.map(row=>[...row]),detected:[...detected],update,prior,cloud,rays,neff,resampled,
-    pfError:distance(truth,estimateState.mean),odometryError:distance(truth,odometry)};
+    pfError:distance(truth,estimateState.mean),simGtError:distance(truth,nominal)};
 }
 export function runPfSimulation(p,map){
   if(!['landmark','laser'].includes(p.mode))throw new Error('Choose a particle filter model.');
@@ -180,19 +178,19 @@ export function runPfSimulation(p,map){
   const defaultPose=p.mode==='landmark'?[19,2,120*DEG]:[19.5,4.5,150*DEG];
   const initialPose=p.initialPose??defaultPose,landmarks=p.mode==='landmark'?(p.landmarks??PF_LANDMARKS).map(point=>[...point]):[];
   if(!Array.isArray(initialPose)||initialPose.length!==3||!initialPose.every(Number.isFinite)||!isFree(map,initialPose))throw new Error('Place the starting robot pose in a free map cell.');
-  if(p.mode==='landmark'&&(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>point.length===2&&point.every(value=>Number.isFinite(value)&&value>=-20&&value<=20))))throw new Error('Enter up to 20 valid landmarks.');
+  if(p.mode==='landmark'&&(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>point.length===2&&point.every((value,axis)=>Number.isFinite(value)&&value>=0&&value<(axis===0?map.rows:map.cols)))))throw new Error('Enter up to 20 valid landmarks.');
   const rng=randomGenerator(p.seed),dt=.1,steps=Math.round(p.duration/dt),pfStep=Math.max(1,Math.round(p.pfDt/dt));
-  let truth=[...initialPose],odometry=[...initialPose],particles=initializeParticles(map,p.particles,rng);
+  let truth=[...initialPose],nominal=[...initialPose],particles=initializeParticles(map,p.particles,rng);
   let weights=Array(p.particles).fill(1/p.particles),state=estimate(particles,weights);
-  const frames=[makeFrame(0,truth,odometry,state,[],false,null,snapshotCloud(particles),null,p.particles,false)];
-  const pfErrors=[{time:0,error:frames[0].pfError}],odometryErrors=[{time:0,error:0}];
+  const frames=[makeFrame(0,truth,nominal,state,[],false,null,snapshotCloud(particles),null,p.particles,false)];
+  const pfErrors=[{time:0,error:frames[0].pfError}],simGtErrors=[{time:0,error:0}];
   for(let i=0;i<steps;i++){
     const turned=p.scriptedTurn&&(p.mode==='landmark'?i>steps/2:i>2*steps/3);
     const v=turned?(p.mode==='landmark'?.65:.4):p.v;
     const omega=turned?(p.mode==='landmark'?-.03:-.05):p.omega;
     const simSigmaV=p.mode==='laser'?.01:p.sigmaV,simSigmaOmega=p.mode==='laser'?.001:p.sigmaOmega;
     truth=sampleMotion(truth,v,omega,simSigmaV,simSigmaOmega,dt,rng);
-    odometry=sampleMotion(odometry,v,omega,simSigmaV,simSigmaOmega,dt,rng);
+    nominal=sampleMotion(nominal,v,omega,0,0,dt,rng);
     let prior=null,detected=[],rays=null,neff=null,resampled=false,update=false,cloud=null;
     if(i>0&&i%pfStep===0){
       update=true;
@@ -218,13 +216,13 @@ export function runPfSimulation(p,map){
       cloud=snapshotCloud(particles);
       pfErrors.push({time:(i+1)*dt,error:distance(truth,state.mean)});
     }
-    const next=makeFrame((i+1)*dt,truth,odometry,state,detected,update,prior,cloud,rays,neff,resampled);
-    frames.push(next);odometryErrors.push({time:next.time,error:next.odometryError});
+    const next=makeFrame((i+1)*dt,truth,nominal,state,detected,update,prior,cloud,rays,neff,resampled);
+    frames.push(next);simGtErrors.push({time:next.time,error:next.simGtError});
     if(!next.estimate.every(Number.isFinite)||!next.covariance.flat().every(Number.isFinite))throw new Error('Particle filter became unstable. Change the noise or sensor settings.');
   }
   const updates=frames.map((frame,index)=>frame.update?index:null).filter(index=>index!==null);
   const snapshotIndices=Array.from({length:4},(_,i)=>p.duration*(i+1)/4)
     .map(target=>updates.reduce((best,index)=>best===null||Math.abs(frames[index].time-target)<Math.abs(frames[best].time-target)?index:best,null))
     .filter((index,position,array)=>index!==null&&array.indexOf(index)===position);
-  return {parameters:{...p,initialPose:[...initialPose],landmarks:landmarks.map(point=>[...point])},mode:p.mode,map,landmarks,frames,pfErrors,odometryErrors,snapshotIndices};
+  return {parameters:{...p,initialPose:[...initialPose],landmarks:landmarks.map(point=>[...point])},mode:p.mode,map,landmarks,frames,pfErrors,simGtErrors,snapshotIndices};
 }
