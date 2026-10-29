@@ -56,6 +56,7 @@ jobs:
           node tests/velocity_browser_e2e.cjs
           node tests/sensor_browser_e2e.cjs
           node tests/ekf_browser_e2e.cjs
+          node tests/pf_browser_e2e.cjs
       - name: Record generated site on gh-pages
         working-directory: site
         env:
@@ -82,6 +83,8 @@ jobs:
             site/sensor-mobile.png
             site/ekf-desktop.png
             site/ekf-mobile.png
+            site/pf-desktop.png
+            site/pf-mobile.png
   deploy:
     needs: build
     if: github.event_name == 'workflow_call'

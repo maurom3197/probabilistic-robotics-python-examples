@@ -6,8 +6,8 @@ const validPoint=point=>Array.isArray(point)&&point.length===2&&point.every(valu
 const copy=points=>points.map(point=>[...point]);
 const clamp=value=>Math.max(-LIMIT,Math.min(LIMIT,value));
 
-export function createLandmarkEditor(onChange){
-  let points=copy(EKF_LANDMARKS);
+export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,downloadName='ekf-landmark-map.json'}={}){
+  let points=copy(defaultLandmarks);
   const host=$('ekf-landmark-rows'),canvas=$('ekf-landmark-map'),error=$('ekf-map-error');
   function showError(message){error.textContent=message;error.hidden=!message;}
   function geometry(width,height){
@@ -118,7 +118,7 @@ export function createLandmarkEditor(onChange){
     draw();onChange();
   }
   $('ekf-add-landmark').addEventListener('click',()=>add([0,0]));
-  $('ekf-reset-landmarks').addEventListener('click',()=>setPoints(EKF_LANDMARKS));
+  $('ekf-reset-landmarks').addEventListener('click',()=>setPoints(defaultLandmarks));
   $('ekf-clear-landmarks').addEventListener('click',()=>setPoints([]));
   canvas.addEventListener('click',event=>{
     const rect=canvas.getBoundingClientRect(),g=geometry(rect.width,rect.height);
@@ -130,7 +130,7 @@ export function createLandmarkEditor(onChange){
     try{
       const data=JSON.stringify({startPose:readPose(),landmarks:read()},null,2);
       const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
-      const link=document.createElement('a');link.href=url;link.download='ekf-landmark-map.json';
+      const link=document.createElement('a');link.href=url;link.download=downloadName;
       document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
       showError('');
     }catch(cause){showError(cause.message);}
@@ -154,5 +154,5 @@ export function createLandmarkEditor(onChange){
   if('ResizeObserver' in window)new ResizeObserver(draw).observe(canvas);
   else window.addEventListener('resize',draw);
   render();
-  return {read,signature,readPose};
+  return {read,signature,readPose,draw};
 }

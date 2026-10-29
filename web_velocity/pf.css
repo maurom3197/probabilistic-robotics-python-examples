@@ -1,0 +1,10 @@
+.pf-canvas{display:block;width:100%;height:430px;margin-top:12px;background:#fbfdff}
+.pf-error-canvas{height:260px}
+.pf-preview-canvas{display:block;width:100%;height:260px;background:#fbfdff;border:1px solid var(--line);border-radius:8px;margin-top:10px;cursor:crosshair}
+.pf-event,.pf-chart-note{padding:0 20px 12px;margin-top:8px}
+.pf-event{min-height:30px}
+.pf-check{display:flex;gap:7px;align-items:flex-start;font-size:11px;line-height:1.5;color:var(--muted);margin:11px 0}
+#lm-map-choice,#laser-map-choice{width:100%}
+#pf-landmark .landmark-list-heading{grid-template-columns:1fr 64px 64px 24px}
+#lm-form details,#laser-form details{margin-bottom:19px}
+@media(max-width:720px){.pf-canvas{height:340px}.pf-error-canvas{height:250px}}
