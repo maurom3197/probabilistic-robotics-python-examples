@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./site.css">
   <link rel="stylesheet" href="./sensor-model.css">
   <link rel="stylesheet" href="./gaussian-filters.css">
-  <link rel="stylesheet" href="./pf.css?v=3">
+  <link rel="stylesheet" href="./pf.css?v=4">
 </head>
 <body>
   <header class="topbar">
@@ -24,26 +24,26 @@
   <section class="intro"><div><p class="eyebrow">DISCRETE FILTERS / 05</p><h1>Locate the robot with particles.</h1><p class="subtitle">Compare landmark corrections with likelihood-field laser updates. Watch particles concentrate as measurements improve localization.</p></div></section>
   <nav class="sensor-section-nav" aria-label="Particle filter experiments"><a href="#pf-landmark">Landmark PF ↓</a><a href="#pf-laser">Laser likelihood field PF ↓</a></nav>
   <section id="pf-landmark" class="sensor-experiment" aria-labelledby="pf-landmark-heading">
-    <div class="sensor-section-heading"><p class="eyebrow">EXPERIMENT 01 · LANDMARKS</p><h2 id="pf-landmark-heading">Particle filter with range and bearing landmarks</h2><p>Based on <code>pf_robot_gridmap_landmarks.py</code>. Adjust the velocity and measurement noise, then inspect detected landmarks, particle spread, and position error.</p></div>
+    <div class="sensor-section-heading"><p class="eyebrow">EXPERIMENT 01 · LANDMARKS</p><h2 id="pf-landmark-heading">Particle filter with range and bearing landmarks</h2><p>Based on <code>pf_robot_landmarks.py</code>. Adjust the velocity and measurement noise, then inspect detected landmarks, particle spread, and position error.</p></div>
     <div class="lab-grid"><aside class="controls card" aria-label="Landmark particle filter parameters">
  <div class="section-title"><h2>Parameters</h2><span class="small-label">LANDMARK PF</span></div>
- <p class="hint">The example starts with N = 500 particles across free cells of map3.png and 10 landmarks on occupied cells beside free space. Choose a map and edit the robot start and landmarks.</p>
+ <p class="hint">The example starts with N = 1,000 particles uniformly distributed from 0 to 20 m on each axis. Edit the robot start and the 10 landmarks from the Python example.</p>
  <form id="lm-form" novalidate>
-  <fieldset><legend>Map</legend><select id="lm-map-choice" aria-label="Repository occupancy map"><option value="map0.png">map0.png</option><option value="map1.png">map1.png</option><option value="map2.png">map2.png</option><option value="map3.png" selected>map3.png</option><option value="map31.png">map31.png</option><option value="map31_grey.png">map31_grey.png</option><option value="map4.png">map4.png</option></select><p class="hint">The source uses 3×3 pooling. Black cells are occupied; gray cells are unknown.</p></fieldset>
+
   <fieldset><legend>Velocity command</legend><div id="lm-command-controls"></div></fieldset>
   <fieldset><legend>Velocity motion noise</legend><div id="lm-motion-controls"></div></fieldset>
-  <fieldset><legend>Particles</legend><div id="lm-particle-controls"></div><p class="hint">The map starts with N particles in free cells; up to the first 500 are drawn.</p></fieldset>
+  <fieldset><legend>Particles</legend><div id="lm-particle-controls"></div><p class="hint">N particles start uniformly in the 0–20 m area; up to the first 500 are drawn.</p></fieldset>
   <fieldset><legend>Landmark sensor</legend><div id="lm-sensor-controls"></div></fieldset>
-  <details class="landmark-editor pf-grid-map" open><summary>Robot and landmark map</summary>
+  <details class="landmark-editor pf-landmark-layout" open><summary>Robot and landmark layout</summary>
     <h3 class="ekf-map-subtitle">Robot starting pose</h3><div id="ekf-start-pose-controls"></div>
-    <p class="hint">The selected grid is shown below. Choose a click tool, then place the robot on a free cell or add a landmark. Coordinates follow the map dimensions; JSON saves the start and landmarks.</p>
-    <div class="ekf-map-actions pf-placement-tools"><button id="ekf-click-landmark" class="button secondary" type="button" aria-pressed="true">Click: landmark</button><button id="ekf-click-robot" class="button secondary" type="button" aria-pressed="false">Click: robot</button></div><canvas id="ekf-landmark-map" class="ekf-map-canvas" role="img" aria-label="Selected occupancy map; click to place a landmark or robot"></canvas>
+    <p class="hint">Choose a click tool to place the robot or landmarks on the 0–30 m x/y plane. JSON saves the start and landmark positions.</p>
+    <div class="ekf-map-actions pf-placement-tools"><button id="ekf-click-landmark" class="button secondary" type="button" aria-pressed="true">Click: landmark</button><button id="ekf-click-robot" class="button secondary" type="button" aria-pressed="false">Click: robot</button></div><canvas id="ekf-landmark-map" class="ekf-map-canvas" role="img" aria-label="Landmark coordinate plane from 0 to 30 meters; click to place a landmark or robot"></canvas>
     <div class="ekf-map-actions"><button id="ekf-add-landmark" class="button secondary" type="button">+ Add</button><button id="ekf-reset-landmarks" class="button quiet" type="button">Restore example</button><button id="ekf-clear-landmarks" class="button quiet" type="button">Clear</button></div>
-    <div class="landmark-list-heading"><span>Landmark</span><span>x [cells]</span><span>y [cells]</span><span></span></div><div id="ekf-landmark-rows" class="ekf-landmark-rows"></div>
-    <div class="ekf-map-actions"><button id="ekf-save-map" class="button quiet" type="button">Download map JSON ↓</button><label class="button quiet ekf-load-label" for="ekf-load-map">Load map JSON ↑</label><input id="ekf-load-map" class="sr-only" type="file" accept=".json,application/json"></div>
+    <div class="landmark-list-heading"><span>Landmark</span><span>x [m]</span><span>y [m]</span><span></span></div><div id="ekf-landmark-rows" class="ekf-landmark-rows"></div>
+    <div class="ekf-map-actions"><button id="ekf-save-map" class="button quiet" type="button">Download layout JSON ↓</button><label class="button quiet ekf-load-label" for="ekf-load-map">Load layout JSON ↑</label><input id="ekf-load-map" class="sr-only" type="file" accept=".json,application/json"></div>
     <p id="ekf-map-error" class="error" role="alert" hidden></p>
   </details>
-  <details><summary>Simulation settings</summary><div id="lm-experiment-controls"></div><label class="pf-check"><input id="lm-scripted-turn" type="checkbox" checked> Use the source's second velocity command after halfway</label></details>
+  <details><summary>Simulation settings</summary><div id="lm-experiment-controls"></div></details>
   <button class="button primary run-button" id="lm-run" type="submit">▶ Run landmark PF</button><p id="lm-form-error" class="error" role="alert" hidden></p>
  </form>
 </aside><div class="results">
@@ -59,9 +59,9 @@
      <p class="hint pf-chart-note">PF position error is relative to Sim GT at filter updates. Sim GT drift is relative to the noiseless commanded route at every simulation step.</p>
    </div>
    <div class="metrics" aria-label="Current particle filter statistics">
-     <div class="metric card"><span>PF position error</span><strong id="lm-pf-error">—</strong><small>cells · current frame</small></div>
-     <div class="metric card"><span>Sim GT drift</span><strong id="lm-sim-gt-error">—</strong><small>from nominal route · cells</small></div>
-     <div class="metric card"><span>Position σ</span><strong id="lm-sigma">—</strong><small>x / y · cells</small></div>
+     <div class="metric card"><span>PF position error</span><strong id="lm-pf-error">—</strong><small>m · current frame</small></div>
+     <div class="metric card"><span>Sim GT drift</span><strong id="lm-sim-gt-error">—</strong><small>from nominal route · m</small></div>
+     <div class="metric card"><span>Position σ</span><strong id="lm-sigma">—</strong><small>x / y · m</small></div>
      <div class="metric card"><span>Effective particles</span><strong id="lm-neff">—</strong><small>before resampling</small></div>
    </div>
    <details class="card run-record"><summary>Parameters from the latest run</summary><pre id="lm-last-parameters">No runs yet.</pre></details>
@@ -108,6 +108,6 @@
   <section class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>How does the filter use measurements?</h2><div class="theory-note"><h3>1. Predict, weight, and resample</h3><p>Particles move under noisy velocity commands. Landmark range and bearing or laser endpoint likelihoods change their weights. When the effective particle count falls below half, the filter resamples. The red particles show the sampled position distribution as the filter predicts, weights, and resamples. In the laser experiment, endpoint color shows the likelihood of each valid range measurement; gray endpoints are maximum-range beams.</p></div></section>
   <footer><span>Probabilistic Robotics · Discrete Filters</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/tree/main/Discrete_Filters" target="_blank" rel="noopener">View Python examples ↗</a></footer>
   </main>
-  <script type="module" src="./pf.js?v=3"></script>
+  <script type="module" src="./pf.js?v=4"></script>
 </body>
 </html>

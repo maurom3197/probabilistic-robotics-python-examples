@@ -9,7 +9,7 @@
 #lm-form details,#laser-form details{margin-bottom:19px}
 @media(max-width:720px){.pf-canvas{height:340px}.pf-error-canvas{height:250px}}
 
-#pf-landmark .pf-grid-map .ekf-map-canvas{height:300px}
+#pf-landmark .pf-landmark-layout .ekf-map-canvas{height:300px}
 .pf-placement-tools .button[aria-pressed="true"]{background:#2454d7;color:#fff;border-color:#2454d7}
 
 .pf-particle-key{background:#dc2626}

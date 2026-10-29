@@ -55,6 +55,19 @@ function mapBase(c,map,g,compact=false){
     c.save();c.translate(12,g.top+g.height/2);c.rotate(-Math.PI/2);c.fillText('map column y [cells]',0,0);c.restore();
   }
 }
+function landmarkBase(c,g,world){
+  c.fillStyle='#fff';c.fillRect(g.left,g.top,g.width,g.height);
+  for(let x=0;x<=world.rows;x+=5){
+    path(c,[[g.toX(x),g.top],[g.toX(x),g.top+g.height]],C.grid,1);
+    c.fillStyle=C.muted;c.textAlign='center';c.fillText(String(x),g.toX(x),g.top+g.height+15);
+  }
+  for(let y=0;y<=world.cols;y+=5){
+    path(c,[[g.left,g.toY(y)],[g.left+g.width,g.toY(y)]],C.grid,1);
+    c.fillStyle=C.muted;c.textAlign='right';c.fillText(String(y),g.left-7,g.toY(y)+3);
+  }
+  c.fillStyle=C.muted;c.textAlign='center';c.fillText('x [m]',g.left+g.width/2,g.top+g.height+31);
+  c.save();c.translate(12,g.top+g.height/2);c.rotate(-Math.PI/2);c.fillText('y [m]',0,0);c.restore();
+}
 function robot(c,pose,g,color){
   const x=g.toX(pose[0]),y=g.toY(pose[1]);
   dot(c,x,y,4.8,color);
@@ -63,8 +76,9 @@ function robot(c,pose,g,color){
 export function drawPfTrajectory(canvas,result,index){
   const {c,width,height}=surface(canvas);
   if(!result){c.fillStyle=C.muted;c.textAlign='center';c.fillText('Run the particle filter to see trajectories.',width/2,height/2);return;}
-  const g=mapGeometry(width,height,result.map,false,result.mode==='laser'?85:20),f=result.frames[Math.max(0,Math.min(index,result.frames.length-1))];
-  mapBase(c,result.map,g);
+  const domain=result.map??result.world;
+  const g=mapGeometry(width,height,domain,false,result.mode==='laser'?85:20),f=result.frames[Math.max(0,Math.min(index,result.frames.length-1))];
+  if(result.mode==='laser')mapBase(c,result.map,g);else landmarkBase(c,g,result.world);
   c.save();c.beginPath();c.rect(g.left,g.top,g.width,g.height);c.clip();
   const latestCloud=result.frames.slice(0,index+1).reverse().find(frame=>frame.cloud)?.cloud||[];
   for(const point of latestCloud.slice(0,500))dot(c,g.toX(point[0]),g.toY(point[1]),1.45,'#dc26268c');
@@ -113,7 +127,7 @@ export function drawPfError(canvas,result,index){
     c.textAlign='center';c.fillText(t.toFixed(0),px,height-bottom+17);
   }
   c.textAlign='center';c.fillText('time [s]',width/2,height-5);
-  c.save();c.translate(12,height/2);c.rotate(-Math.PI/2);c.fillText('position error [cells]',0,0);c.restore();
+  c.save();c.translate(12,height/2);c.rotate(-Math.PI/2);c.fillText(result.mode==='landmark'?'position error [m]':'position error [cells]',0,0);c.restore();
   path(c,result.simGtErrors.map(p=>[x(p.time),y(p.error)]),C.truth,1.8);
   path(c,result.pfErrors.map(p=>[x(p.time),y(p.error)]),C.pf,2.3);
   const current=result.frames[index],px=x(current.time);

@@ -1,23 +1,23 @@
-import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=3';
-import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=3';
-import {createLandmarkEditor} from './gaussian-filters-map.js?v=4';
+import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=4';
+import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=4';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=5';
 
 const $=id=>document.getElementById(id),DEG=Math.PI/180;
 const DEFINITIONS=[
-  ['lm-v','Linear velocity v (cells/s)',0,2,.8,.01,'lm-command-controls','v'],
-  ['lm-omega','Angular velocity ω (rad/s)',-1.5,1.5,.05,.01,'lm-command-controls','omega'],
-  ['lm-sigma-v','Velocity σv (cells/s)',0,1,.15,.01,'lm-motion-controls','sigmaV'],
-  ['lm-sigma-omega','Angular velocity σω (rad/s)',0,1,.03,.01,'lm-motion-controls','sigmaOmega'],
+  ['lm-v','Linear velocity v (m/s)',0,2,.8,.01,'lm-command-controls','v'],
+  ['lm-omega','Angular velocity ω (rad/s)',-1.5,1.5,.03,.01,'lm-command-controls','omega'],
+  ['lm-sigma-v','Velocity σv (m/s)',0,1,.1,.01,'lm-motion-controls','sigmaV'],
+  ['lm-sigma-omega','Angular velocity σω (rad/s)',0,1,.02,.01,'lm-motion-controls','sigmaOmega'],
   ['lm-fov','Field of view (°)',5,360,90,1,'lm-sensor-controls','fov'],
-  ['lm-max-range','Maximum range (cells)',.1,20,8,.1,'lm-sensor-controls','maxRange'],
-  ['lm-sigma-range','Range σ (cells)',.05,1,.1,.01,'lm-sensor-controls','sigmaRange'],
+  ['lm-max-range','Maximum range (m)',.1,20,8,.1,'lm-sensor-controls','maxRange'],
+  ['lm-sigma-range','Range σ (m)',.05,1,.1,.01,'lm-sensor-controls','sigmaRange'],
   ['lm-sigma-bearing','Bearing σ (°)',1,45,1,.01,'lm-sensor-controls','sigmaBearing'],
-  ['startX','Start x / map row',0,21.9,19,.1,'ekf-start-pose-controls','startX'],
-  ['startY','Start y / map column',0,21.9,2,.1,'ekf-start-pose-controls','startY'],
-  ['startTheta','Start heading θ (°)',-180,180,120,.01,'ekf-start-pose-controls','startTheta'],
+  ['startX','Start x (m)',0,30,1,.1,'ekf-start-pose-controls','startX'],
+  ['startY','Start y (m)',0,30,6,.1,'ekf-start-pose-controls','startY'],
+  ['startTheta','Start heading θ (°)',-180,180,17.19,.01,'ekf-start-pose-controls','startTheta'],
   ['lm-pf-dt','PF interval (s)',.1,1,1,.1,'lm-experiment-controls','pfDt'],
-  ['lm-duration','Duration (s)',2,60,28,1,'lm-experiment-controls','duration'],
-  ['lm-particles','Particle count N',50,2000,500,1,'lm-particle-controls','particles'],
+  ['lm-duration','Duration (s)',2,60,22,1,'lm-experiment-controls','duration'],
+  ['lm-particles','Particle count N',50,2000,1000,1,'lm-particle-controls','particles'],
   ['lm-seed','Random seed',0,999999,42,1,'lm-experiment-controls','seed'],
   ['laser-x','Start x / map row',0,21.9,19.5,.1,'laser-pose-controls','startX'],
   ['laser-y','Start y / map column',0,21.9,4.5,.1,'laser-pose-controls','startY'],
@@ -39,7 +39,7 @@ const DEFINITIONS=[
   ['laser-particles','Particle count N',50,2000,1000,1,'laser-particle-controls','particles'],
   ['laser-seed','Random seed',0,999999,42,1,'laser-experiment-controls','seed'],
 ];
-const state={lm:{result:null,index:0,timer:null,runs:0,map:null,request:0},laser:{result:null,index:0,timer:null,runs:0,map:null,request:0}};
+const state={lm:{result:null,index:0,timer:null,runs:0},laser:{result:null,index:0,timer:null,runs:0,map:null,request:0}};
 const mapCache=new Map();
 let editor=null;
 function markDraft(mode){
@@ -77,7 +77,8 @@ function makeControl([id,label,min,max,initial,step,host]){
   $(host).append(row);
 }
 function readParameters(mode){
-  const p={mode:mode==='lm'?'landmark':'laser',mapFile:$(mode+'-map-choice').value,scriptedTurn:$(mode+'-scripted-turn').checked};
+  const p={mode:mode==='lm'?'landmark':'laser',scriptedTurn:mode==='laser'&&$('laser-scripted-turn').checked};
+  if(mode==='laser')p.mapFile=$('laser-map-choice').value;
   for(const [id,label,min,max,initial,step,host,key] of DEFINITIONS){
     if(mode==='lm'&&id.startsWith('laser-')||mode==='laser'&&!id.startsWith('laser-'))continue;
     const input=$(id),value=input.valueAsNumber;
@@ -104,33 +105,30 @@ function freePose(map,pose){
   const [x,y]=pose;
   return x>=0&&x<map.rows&&y>=0&&y<map.cols&&map.cells[Math.floor(x)][Math.floor(y)]===0;
 }
-async function selectMap(mode){
-  const s=state[mode],request=++s.request,filename=$(mode+'-map-choice').value;
+async function selectMap(){
+  const s=state.laser,request=++s.request,filename=$('laser-map-choice').value;
   try{
     const map=await getMap(filename);
     if(request!==s.request)return;
     s.map=map;
-    const ids=mode==='lm'?['startX','startY']:['laser-x','laser-y'];
+    const ids=['laser-x','laser-y'];
     ids.forEach((id,axis)=>{
       const max=(axis===0?map.rows:map.cols)-.1;
       $(id).min='0';$(id).max=String(max);
       $(id+'-slider').min='0';$(id+'-slider').max=String(max);
     });
-    if(mode==='lm')editor?.setGridMap(map);
     const pose=ids.map(id=>$(id).valueAsNumber);
     if(!freePose(map,pose)){
-      const candidates=map.free;
-      const nearest=candidates.reduce((best,[x,y])=>{
+      const nearest=map.free.reduce((best,[x,y])=>{
         const d=(x+.5-pose[0])**2+(y+.5-pose[1])**2;
         return !best||d<best.d?{x:x+.5,y:y+.5,d}:best;
       },null);
       if(nearest){setInput(ids[0],nearest.x);setInput(ids[1],nearest.y);}
     }
-    markDraft(mode);
-    if(mode==='lm')editor?.draw();
+    markDraft('laser');
   }catch(error){
     if(request!==s.request)return;
-    s.map=null;$(mode+'-form-error').textContent=error.message;$(mode+'-form-error').hidden=false;
+    s.map=null;$('laser-form-error').textContent=error.message;$('laser-form-error').hidden=false;
   }
 }
 function drawLaserPreview(){
@@ -149,7 +147,7 @@ function display(mode,index){
   const sensor=mode==='lm'?latest?.detected.length+' landmark'+(latest?.detected.length===1?'':'s')+' detected':latest?.rays?.length+' laser rays';
   $(mode+'-event').textContent=latest
     ? 'Latest update: '+sensor+' · effective particles '+latest.neff.toFixed(0)+(latest.resampled?' · resampled':'')+'.'
-    : 'Particles are distributed over the map before the first filter update.';
+    : mode==='lm'?'Particles start uniformly within 0–20 m before the first filter update.':'Particles start over free map cells before the first filter update.';
   $(mode+'-pf-error').textContent=f.pfError.toFixed(2);
   $(mode+'-sim-gt-error').textContent=f.simGtError.toFixed(2);
   $(mode+'-sigma').textContent=Math.sqrt(Math.max(0,f.covariance[0][0])).toFixed(2)+' / '+Math.sqrt(Math.max(0,f.covariance[1][1])).toFixed(2);
@@ -175,7 +173,7 @@ async function run(mode){
   const error=$(mode+'-form-error'),button=$(mode+'-run');
   error.hidden=true;button.disabled=true;
   try{
-    const p=readParameters(mode),map=await getMap(p.mapFile);
+    const p=readParameters(mode),map=mode==='laser'?await getMap(p.mapFile):null;
     await new Promise(resolve=>setTimeout(resolve,0));
     const result=runPfSimulation(p,map),s=state[mode];
     stop(mode);s.result=result;s.runs++;
@@ -188,15 +186,15 @@ async function run(mode){
 }
 function init(){
   DEFINITIONS.forEach(makeControl);
-  editor=createLandmarkEditor(()=>markDraft('lm'),{defaultLandmarks:PF_LANDMARKS,downloadName:'pf-landmark-map.json'});
+  editor=createLandmarkEditor(()=>markDraft('lm'),{defaultLandmarks:PF_LANDMARKS,downloadName:'pf-landmarks.json',axisRange:[0,30]});
   for(const mode of ['lm','laser']){
     $(mode+'-form').addEventListener('submit',event=>{event.preventDefault();run(mode);});
-    $(mode+'-map-choice').addEventListener('change',()=>selectMap(mode));
-    $(mode+'-scripted-turn').addEventListener('change',()=>markDraft(mode));
     $(mode+'-play').addEventListener('click',()=>play(mode));
     $(mode+'-frame').addEventListener('input',()=>{stop(mode);display(mode,Number($(mode+'-frame').value));});
-    selectMap(mode);
   }
+  $('laser-map-choice').addEventListener('change',selectMap);
+  $('laser-scripted-turn').addEventListener('change',()=>markDraft('laser'));
+  selectMap();
   $('laser-map-preview').addEventListener('click',event=>{
     const map=state.laser.map;if(!map)return;
     const [x,y]=previewPoint(event.currentTarget,map,event.clientX,event.clientY);

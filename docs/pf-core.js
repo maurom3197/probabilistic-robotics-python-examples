@@ -1,7 +1,8 @@
 export const PF_LANDMARKS=[
-  [19.5,7.5],[19.5,9.5],[18.5,9.5],[11.5,4.5],[9.5,5.5],
-  [9.5,7.5],[10.5,12.5],[10.5,13.5],[7.5,7.5],[5.5,7.5],
+  [5,12],[10.5,7.5],[16.5,15],[10,14],[5,6],
+  [14.5,11.5],[14,9],[8,15.5],[13.5,17],[18.4,18],
 ];
+export const LANDMARK_WORLD={rows:30,cols:30};
 export const PF_MAP_FILES=['map0.png','map1.png','map2.png','map3.png','map31.png','map31_grey.png','map4.png'];
 const TAU=2*Math.PI,DEG=Math.PI/180;
 const wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
@@ -76,6 +77,7 @@ function sampleMotion(pose,v,omega,sigmaV,sigmaOmega,dt,rng){
 }
 function initializeParticles(map,count,rng){
   return Array.from({length:count},()=>{
+    if(!map)return [20*rng.uniform(),20*rng.uniform(),-Math.PI+TAU*rng.uniform()];
     const cell=map.free[Math.floor(rng.uniform()*map.free.length)];
     return [cell[0]+.05+.9*rng.uniform(),cell[1]+.05+.9*rng.uniform(),-Math.PI+TAU*rng.uniform()];
   });
@@ -100,14 +102,18 @@ function normalize(logWeights){
   if(!(total>0))throw new Error('Particle weights vanished. Change the noise or sensor settings.');
   return weights.map(w=>w/total);
 }
-function resample(particles,weights,rng,stratified){
+function resample(particles,weights,rng,mode){
   const count=particles.length,cdf=[],next=[];
   let total=0,index=0;
   weights.forEach(w=>{total+=w;cdf.push(total);});cdf[count-1]=1;
-  const offset=stratified?0:rng.uniform();
+  const offset=mode==='systematic'?rng.uniform():0;
   for(let i=0;i<count;i++){
-    const target=(i+offset+(stratified?rng.uniform():0))/count;
-    while(index<count-1&&target>cdf[index])index++;
+    const target=mode==='simple'?rng.uniform():(i+offset)/count;
+    if(mode==='simple'){
+      let low=0,high=count-1;
+      while(low<high){const middle=(low+high)>>>1;if(cdf[middle]<target)low=middle+1;else high=middle;}
+      index=low;
+    }else while(index<count-1&&target>cdf[index])index++;
     next.push([...particles[index]]);
   }
   return next;
@@ -173,23 +179,26 @@ function makeFrame(time,truth,nominal,estimateState,detected,update,prior,cloud,
     covariance:estimateState.covariance.map(row=>[...row]),detected:[...detected],update,prior,cloud,rays,neff,resampled,
     pfError:distance(truth,estimateState.mean),simGtError:distance(truth,nominal)};
 }
-export function runPfSimulation(p,map){
+export function runPfSimulation(p,map=null){
   if(!['landmark','laser'].includes(p.mode))throw new Error('Choose a particle filter model.');
+  if(p.mode==='laser'&&!map)throw new Error('Choose a laser occupancy map.');
   if(!Number.isInteger(p.particles)||p.particles<50||p.particles>2000)throw new Error('Particle count must be between 50 and 2000.');
   if(!Number.isInteger(p.seed)||p.seed<0)throw new Error('Random seed must be a non-negative integer.');
-  const defaultPose=p.mode==='landmark'?[19,2,120*DEG]:[19.5,4.5,150*DEG];
+  const defaultPose=p.mode==='landmark'?[1,6,.3]:[19.5,4.5,150*DEG];
   const initialPose=p.initialPose??defaultPose,landmarks=p.mode==='landmark'?(p.landmarks??PF_LANDMARKS).map(point=>[...point]):[];
-  if(!Array.isArray(initialPose)||initialPose.length!==3||!initialPose.every(Number.isFinite)||!isFree(map,initialPose))throw new Error('Place the starting robot pose in a free map cell.');
-  if(p.mode==='landmark'&&(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>point.length===2&&point.every((value,axis)=>Number.isFinite(value)&&value>=0&&value<(axis===0?map.rows:map.cols)))))throw new Error('Enter up to 20 valid landmarks.');
+  const validLandmarkPose=Array.isArray(initialPose)&&initialPose.length===3&&initialPose[0]>=0&&initialPose[0]<=30&&initialPose[1]>=0&&initialPose[1]<=30;
+  if(!Array.isArray(initialPose)||initialPose.length!==3||!initialPose.every(Number.isFinite)||(p.mode==='laser'?!isFree(map,initialPose):!validLandmarkPose))throw new Error(p.mode==='laser'?'Place the starting robot pose in a free map cell.':'Place the starting robot pose within 0–30 m on both axes.');
+  if(p.mode==='landmark'&&(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>point.length===2&&point.every(value=>Number.isFinite(value)&&value>=0&&value<=30))))throw new Error('Enter up to 20 landmarks within 0–30 m.');
   const rng=randomGenerator(p.seed),dt=.1,steps=Math.round(p.duration/dt),pfStep=Math.max(1,Math.round(p.pfDt/dt));
-  let truth=[...initialPose],nominal=[...initialPose],particles=initializeParticles(map,p.particles,rng);
+  let truth=[...initialPose],nominal=[...initialPose],particles=initializeParticles(p.mode==='laser'?map:null,p.particles,rng);
   let weights=Array(p.particles).fill(1/p.particles),state=estimate(particles,weights);
+  if(p.mode==='landmark')state={mean:[...initialPose],covariance:[[.1,0],[0,.1]]};
   const frames=[makeFrame(0,truth,nominal,state,[],false,null,snapshotCloud(particles),null,p.particles,false)];
   const pfErrors=[{time:0,error:frames[0].pfError}],simGtErrors=[{time:0,error:0}];
   for(let i=0;i<steps;i++){
-    const turned=p.scriptedTurn&&(p.mode==='landmark'?i>steps/2:i>2*steps/3);
-    const v=turned?(p.mode==='landmark'?.65:.4):p.v;
-    const omega=turned?(p.mode==='landmark'?-.03:-.05):p.omega;
+    const turned=p.mode==='laser'&&p.scriptedTurn&&i>2*steps/3;
+    const v=turned?.4:p.v;
+    const omega=turned?-.05:p.omega;
     const simSigmaV=p.mode==='laser'?.01:p.sigmaV,simSigmaOmega=p.mode==='laser'?.001:p.sigmaOmega;
     truth=sampleMotion(truth,v,omega,simSigmaV,simSigmaOmega,dt,rng);
     nominal=sampleMotion(nominal,v,omega,0,0,dt,rng);
@@ -214,7 +223,7 @@ export function runPfSimulation(p,map){
       weights=normalize(logWeights);
       neff=1/weights.reduce((sum,w)=>sum+w*w,0);
       if(neff<p.particles/2){
-        particles=resample(particles,weights,rng,p.mode==='landmark');
+        particles=resample(particles,weights,rng,p.mode==='landmark'?'simple':'systematic');
         weights=Array(p.particles).fill(1/p.particles);resampled=true;
       }
       state=estimate(particles,weights);
@@ -229,5 +238,5 @@ export function runPfSimulation(p,map){
   const snapshotIndices=Array.from({length:4},(_,i)=>p.duration*(i+1)/4)
     .map(target=>updates.reduce((best,index)=>best===null||Math.abs(frames[index].time-target)<Math.abs(frames[best].time-target)?index:best,null))
     .filter((index,position,array)=>index!==null&&array.indexOf(index)===position);
-  return {parameters:{...p,initialPose:[...initialPose],landmarks:landmarks.map(point=>[...point])},mode:p.mode,map,landmarks,frames,pfErrors,simGtErrors,snapshotIndices};
+  return {parameters:{...p,initialPose:[...initialPose],landmarks:landmarks.map(point=>[...point])},mode:p.mode,map:p.mode==='laser'?map:null,world:p.mode==='landmark'?LANDMARK_WORLD:null,landmarks,frames,pfErrors,simGtErrors,snapshotIndices};
 }

@@ -4,10 +4,10 @@ const $=id=>document.getElementById(id);
 const MAX_POINTS=20;
 const copy=points=>points.map(point=>[...point]);
 
-export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,downloadName='ekf-landmark-map.json',gridMap=null}={}){
+export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,downloadName='ekf-landmark-map.json',gridMap=null,axisRange=[-20,20]}={}){
   let points=copy(defaultLandmarks),map=gridMap,clickMode='landmark';
   const host=$('ekf-landmark-rows'),canvas=$('ekf-landmark-map'),error=$('ekf-map-error');
-  const bounds=axis=>map?[0,(axis===0?map.rows:map.cols)-.1]:[-20,20];
+  const bounds=axis=>map?[0,(axis===0?map.rows:map.cols)-.1]:axisRange;
   const inBounds=(value,axis)=>Number.isFinite(value)&&value>=bounds(axis)[0]&&value<=bounds(axis)[1];
   const validPoint=point=>Array.isArray(point)&&point.length===2&&point.every(inBounds);
   const clamp=(value,axis)=>Math.max(bounds(axis)[0],Math.min(bounds(axis)[1],value));
@@ -15,7 +15,7 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
   function showError(message){error.textContent=message;error.hidden=!message;}
   function geometry(width,height){
     const left=29,right=12,top=12,bottom=27,plotW=width-left-right,plotH=height-top-bottom;
-    const xMin=map?0:-20,xMax=map?map.rows:20,yMin=map?0:-20,yMax=map?map.cols:20;
+    const xMin=map?0:axisRange[0],xMax=map?map.rows:axisRange[1],yMin=map?0:axisRange[0],yMax=map?map.cols:axisRange[1];
     return {left,top,plotW,plotH,
       toX:x=>left+(x-xMin)/(xMax-xMin)*plotW,
       toY:y=>height-bottom-(y-yMin)/(yMax-yMin)*plotH,
@@ -41,7 +41,8 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
       ctx.textAlign='center';for(let x=0;x<=map.rows;x+=5)ctx.fillText(String(x),g.toX(x),height-6);
       ctx.textAlign='right';for(let y=0;y<=map.cols;y+=5)ctx.fillText(String(y),g.left-5,g.toY(y)+3);
     }else{
-      for(let n=-20;n<=20;n+=10){
+      const tick=axisRange[1]-axisRange[0]<=30?5:10;
+      for(let n=axisRange[0];n<=axisRange[1];n+=tick){
         const x=g.toX(n),y=g.toY(n);
         ctx.beginPath();ctx.moveTo(x,g.top);ctx.lineTo(x,g.top+g.plotH);ctx.moveTo(g.left,y);ctx.lineTo(g.left+g.plotW,y);
         ctx.strokeStyle=n===0?'#b9c8da':'#e6edf6';ctx.stroke();
@@ -129,12 +130,11 @@ export function createLandmarkEditor(onChange,{defaultLandmarks=EKF_LANDMARKS,do
   $('ekf-click-landmark')?.addEventListener('click',()=>setClickMode('landmark'));
   $('ekf-click-robot')?.addEventListener('click',()=>setClickMode('robot'));
   canvas.addEventListener('click',event=>{
-    if(map===null&&clickMode==='robot')return;
     const rect=canvas.getBoundingClientRect(),g=geometry(rect.width,rect.height);
     const [rawX,rawY]=g.toWorld(event.clientX-rect.left,event.clientY-rect.top);
     const x=number(clamp(rawX,0)),y=number(clamp(rawY,1));
     if(clickMode==='robot'){
-      if(map.cells[Math.floor(x)][Math.floor(y)]!==0){showError('Choose a free map cell for the robot.');return;}
+      if(map&&map.cells[Math.floor(x)][Math.floor(y)]!==0){showError('Choose a free map cell for the robot.');return;}
       setPose({x,y,headingDegrees:$('startTheta').valueAsNumber});showError('');
     }else add([x,y]);
   });
