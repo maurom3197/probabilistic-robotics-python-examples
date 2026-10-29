@@ -29,3 +29,10 @@
   .sensor-canvas { height: 340px; }
   .sensor-section-nav a { flex: 1; text-align: center; }
 }
+
+.landmark-map-toolbar{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0 8px}
+.landmark-map-toolbar .button{padding:6px 8px}
+.landmark-map-toolbar .button[aria-pressed="true"]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.landmark-map-canvas{display:block;width:100%;height:255px;background:#fbfdff;border:1px solid var(--line);border-radius:8px;cursor:crosshair;touch-action:none}
+#landmark-map-instruction{min-height:34px;margin:8px 0 15px}
+.landmark-list-heading{margin-top:15px}

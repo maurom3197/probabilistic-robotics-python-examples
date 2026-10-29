@@ -7,7 +7,7 @@
   <title>Sensor Model · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./site.css">
-  <link rel="stylesheet" href="./sensor-model.css">
+  <link rel="stylesheet" href="./sensor-model.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -31,9 +31,13 @@
           <div class="section-title"><h2>Parameters</h2><span class="small-label">LANDMARK MODEL</span></div>
           <p class="hint">The sensor uses the main script's measurement noise: 0.05 m in range and 3° in bearing. Change the model σ below to evaluate measurement likelihoods and sample poses.</p>
           <form id="landmark-form" novalidate>
-            <fieldset><legend>Robot pose</legend><div id="landmark-pose-controls"></div></fieldset>
+            <fieldset><legend>Robot and landmark map</legend><div id="landmark-pose-controls"></div>
+              <div class="landmark-map-toolbar"><button id="landmark-place-robot" class="button secondary" type="button" aria-pressed="true">Place robot</button><button id="landmark-set-heading" class="button secondary" type="button" aria-pressed="false">Set heading</button><button id="landmark-add-point" class="button secondary" type="button" aria-pressed="false">Add landmark</button><button id="landmark-reset-map" class="button quiet" type="button">Restore example</button></div>
+              <canvas id="landmark-map-editor" class="landmark-map-canvas" role="img" aria-label="Interactive map for placing the robot and landmarks"></canvas>
+              <p id="landmark-map-instruction" class="hint">Choose a tool to place the robot, point its heading, or add a landmark. Drag markers to move them.</p>
+              <div id="landmark-count-control"></div><div class="landmark-list-heading"><span>Position [m]</span><span>x</span><span>y</span></div><div id="landmark-rows" class="landmark-rows"></div>
+            </fieldset>
             <fieldset><legend>Sensor and model noise</legend><div id="landmark-sensor-controls"></div></fieldset>
-            <fieldset><legend>Landmarks</legend><div id="landmark-count-control"></div><div class="landmark-list-heading"><span>Position [m]</span><span>x</span><span>y</span></div><div id="landmark-rows" class="landmark-rows"></div></fieldset>
             <button class="button primary run-button" type="submit" id="run-landmark"><span aria-hidden="true">▶</span> Run landmark model</button>
             <p id="landmark-error" class="error" role="alert" hidden></p>
           </form>
@@ -70,6 +74,6 @@
     </section>
     <footer><span>Probabilistic Robotics · Sensor Model</span><span>Models adapted from the repository's <code>Sensors_Models/landmark_model.py</code> and <code>Sensors_Models/likelihood_fields.py</code></span></footer>
   </main>
-  <script type="module" src="./sensor-model.js?v=2"></script>
+  <script type="module" src="./sensor-model.js?v=3"></script>
 </body>
 </html>

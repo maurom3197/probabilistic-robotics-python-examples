@@ -1,11 +1,12 @@
 import {DEFAULT_LANDMARKS, loadOccupancyMap, nearestFreeCell, runLandmarkModel, runLikelihoodField} from './sensor-model-core.js';
 import {drawLandmarkDetection, drawLandmarkSamples, drawFieldRays, drawFieldHeatmap} from './sensor-plots.js';
+import {createLandmarkMapEditor} from './sensor-landmark-map.js?v=1';
 
 const $ = id => document.getElementById(id);
 const DEG = Math.PI/180;
 const LANDMARK_POSE = [
-  ['lm-x', 'Robot x (m)', -15, 15, 3, .1],
-  ['lm-y', 'Robot y (m)', -15, 15, 4, .1],
+  ['lm-x', 'Robot x (m)', -20, 20, 3, .1],
+  ['lm-y', 'Robot y (m)', -20, 20, 4, .1],
   ['lm-theta', 'Heading θ (°)', -180, 180, -90, 1],
 ];
 const LANDMARK_SENSOR = [
@@ -33,6 +34,7 @@ const FIELD_WEIGHTS = [
   ['field-seed', 'Random seed', 0, 999999, 42, 1],
 ];
 let landmarkRows = DEFAULT_LANDMARKS.map(p => [...p]);
+let landmarkMapEditor = null;
 let landmarkResult = null, fieldResult = null, currentMap = null;
 let landmarkRun = 0, fieldRun = 0, mapRequest = 0;
 const mapCache = new Map();
@@ -77,13 +79,16 @@ function markDraft(which) {
   badge.className=`badge${result?' pending':''}`;
 }
 
+function landmarkDraft() { markDraft('landmark'); landmarkMapEditor?.draw(); }
+
 function makeLandmarkRow(index, position) {
   const row=document.createElement('div'); row.className='landmark-edit-row';
   const name=document.createElement('span'); name.textContent=`Landmark ${index+1}`;
   for (const axis of [0,1]) {
     const input=document.createElement('input'); Object.assign(input,{type:'number',min:-20,max:20,step:.1,value:String(position[axis]),id:`landmark-${index}-${axis}`});
     input.setAttribute('aria-label',`Landmark ${index+1} ${axis===0?'x':'y'} position in meters`);
-    input.addEventListener('input',()=>{ if(Number.isFinite(input.valueAsNumber)) landmarkRows[index][axis]=input.valueAsNumber; markDraft('landmark'); });
+    input.addEventListener('input',()=>{ if(Number.isFinite(input.valueAsNumber) && input.valueAsNumber>=-20 && input.valueAsNumber<=20) landmarkRows[index][axis]=input.valueAsNumber; landmarkDraft(); });
+    input.addEventListener('change',()=>{ if(Number.isFinite(input.valueAsNumber) && input.valueAsNumber>=-20 && input.valueAsNumber<=20) { input.value=(Math.round(input.valueAsNumber*10)/10).toFixed(1); landmarkRows[index][axis]=input.valueAsNumber; } landmarkDraft(); });
     row.append(input);
   }
   row.prepend(name); return row;
@@ -98,6 +103,7 @@ function renderLandmarkRows(count) {
     }
     host.append(makeLandmarkRow(i,landmarkRows[i]));
   }
+  landmarkMapEditor?.draw();
 }
 
 function readLandmark() {
@@ -191,15 +197,42 @@ function renderField(result) {
 }
 
 function init() {
-  const landmarkDraft=()=>markDraft('landmark');
+  const setRobotOnMap=(x,y)=>{
+    for(const [id,value] of [['lm-x',x],['lm-y',y]]) { $(id).value=value.toFixed(1); $(id+'-slider').value=String(value); }
+    landmarkDraft();
+  };
+  const moveLandmarkOnMap=(index,x,y)=>{
+    landmarkRows[index]=[x,y];
+    for(const [axis,value] of [[0,x],[1,y]]) $('landmark-'+index+'-'+axis).value=value.toFixed(1);
+    landmarkDraft();
+  };
   LANDMARK_POSE.forEach(def=>control($('landmark-pose-controls'),def,landmarkDraft));
   LANDMARK_SENSOR.forEach(def=>control($('landmark-sensor-controls'),def,landmarkDraft));
   control($('landmark-count-control'),['lm-count','Number of landmarks',1,20,13,1],()=>{
     const n=$('lm-count').valueAsNumber;
     if(Number.isInteger(n)&&n>=1&&n<=20) renderLandmarkRows(n);
-    markDraft('landmark');
+    landmarkDraft();
   });
   renderLandmarkRows(13);
+  landmarkMapEditor=createLandmarkMapEditor({
+    getPose:()=>[$('lm-x').valueAsNumber,$('lm-y').valueAsNumber,$('lm-theta').valueAsNumber],
+    getLandmarks:()=>landmarkRows.slice(0,$('lm-count').valueAsNumber),
+    placeRobot:setRobotOnMap,
+    setHeading:heading=>{$('lm-theta').value=String(heading);$('lm-theta-slider').value=String(heading);landmarkDraft();},
+    moveLandmark:moveLandmarkOnMap,
+    addLandmark:(x,y)=>{
+      const count=$('lm-count').valueAsNumber;
+      if(!Number.isInteger(count)||count<1||count>=20)return;
+      landmarkRows[count]=[x,y];$('lm-count').value=String(count+1);$('lm-count-slider').value=String(count+1);
+      renderLandmarkRows(count+1);landmarkDraft();
+    },
+    reset:()=>{
+      landmarkRows=DEFAULT_LANDMARKS.map(point=>[...point]);
+      $('lm-count').value=String(landmarkRows.length);$('lm-count-slider').value=String(landmarkRows.length);
+      for(const [id,value] of [['lm-x',3],['lm-y',4],['lm-theta',-90]]) { $(id).value=String(value);$(id+'-slider').value=String(value); }
+      renderLandmarkRows(landmarkRows.length);landmarkDraft();
+    },
+  });
   FIELD_POSE.forEach(def=>control($('field-pose-controls'),def,()=>markDraft('field')));
   FIELD_SENSOR.forEach(def=>control($('field-sensor-controls'),def,()=>markDraft('field')));
   FIELD_SIGMA.forEach(def=>control($('field-sigma-control'),def,()=>markDraft('field')));
