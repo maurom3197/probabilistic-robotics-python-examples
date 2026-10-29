@@ -1,5 +1,5 @@
-import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=2';
-import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=2';
+import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=3';
+import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=3';
 import {createLandmarkEditor} from './gaussian-filters-map.js?v=4';
 
 const $=id=>document.getElementById(id),DEG=Math.PI/180;
@@ -17,7 +17,7 @@ const DEFINITIONS=[
   ['startTheta','Start heading θ (°)',-180,180,120,.01,'ekf-start-pose-controls','startTheta'],
   ['lm-pf-dt','PF interval (s)',.1,1,1,.1,'lm-experiment-controls','pfDt'],
   ['lm-duration','Duration (s)',2,60,28,1,'lm-experiment-controls','duration'],
-  ['lm-particles','Number of particles',50,2000,500,50,'lm-experiment-controls','particles'],
+  ['lm-particles','Particle count N',50,2000,500,1,'lm-particle-controls','particles'],
   ['lm-seed','Random seed',0,999999,42,1,'lm-experiment-controls','seed'],
   ['laser-x','Start x / map row',0,21.9,19.5,.1,'laser-pose-controls','startX'],
   ['laser-y','Start y / map column',0,21.9,4.5,.1,'laser-pose-controls','startY'],
@@ -36,7 +36,7 @@ const DEFINITIONS=[
   ['laser-weight-rand','z_rand',0,1,.2,.01,'laser-weight-controls','weightRand'],
   ['laser-pf-dt','PF interval (s)',.1,1,1,.1,'laser-experiment-controls','pfDt'],
   ['laser-duration','Duration (s)',2,60,60,1,'laser-experiment-controls','duration'],
-  ['laser-particles','Number of particles',50,2000,1000,50,'laser-experiment-controls','particles'],
+  ['laser-particles','Particle count N',50,2000,1000,1,'laser-particle-controls','particles'],
   ['laser-seed','Random seed',0,999999,42,1,'laser-experiment-controls','seed'],
 ];
 const state={lm:{result:null,index:0,timer:null,runs:0,map:null,request:0},laser:{result:null,index:0,timer:null,runs:0,map:null,request:0}};

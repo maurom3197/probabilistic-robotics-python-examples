@@ -148,19 +148,21 @@ function castRays(map,pose,numRays,fov,maxRange){
   }
   return rays;
 }
-function applyLaser(particles,logWeights,rays,p,map){
+function laserBeamProbability(endpoint,p,map){
+  const row=Math.floor(endpoint[0]),col=Math.floor(endpoint[1]);
+  const d=row>=0&&row<map.rows&&col>=0&&col<map.cols?map.distances[row][col]:map.maxDistance;
   const total=p.weightHit+p.weightMax+p.weightRand;
-  const hit=p.weightHit/total,random=p.weightRand/total;
-  if(hit+random<=0)throw new Error('Laser PF needs a positive hit or random weight; maximum-range beams are ignored.');
+  return p.weightHit/total*Math.exp(-.5*(d/p.sigmaHit)**2)+p.weightRand/total/p.maxRange;
+}
+function applyLaser(particles,logWeights,rays,p,map){
+  if(p.weightHit+p.weightRand<=0)throw new Error('Laser PF needs a positive hit or random weight; maximum-range beams are ignored.');
   const valid=rays.map((ray,index)=>ray.range<p.maxRange?index:-1).filter(index=>index>=0);
   for(let i=0;i<particles.length;i++){
     const pose=particles[i];
     for(const index of valid){
       const range=rays[index].range,angle=pose[2]-p.fov*DEG/2+index*p.fov*DEG/p.numRays;
       const x=pose[0]+range*Math.cos(angle),y=pose[1]+range*Math.sin(angle);
-      const row=Math.floor(x),col=Math.floor(y);
-      const d=row>=0&&row<map.rows&&col>=0&&col<map.cols?map.distances[row][col]:map.maxDistance;
-      const probability=hit*Math.exp(-.5*(d/p.sigmaHit)**2)+random/p.maxRange;
+      const probability=laserBeamProbability([x,y],p,map);
       logWeights[i]+=Math.log(Math.max(probability,1e-300));
     }
   }
@@ -200,9 +202,12 @@ export function runPfSimulation(p,map){
       if(p.mode==='landmark')detected=applyLandmarks(particles,logWeights,truth,p,landmarks,rng);
       else{
         rays=castRays(map,truth,p.numRays,p.fov,p.maxRange);
-        for(const ray of rays)if(ray.range<p.maxRange){
-          ray.range=Math.max(0,Math.min(p.maxRange,ray.range+rng.normal(p.sigmaLaser)));
-          ray.endpoint=[truth[0]+ray.range*Math.cos(ray.angle),truth[1]+ray.range*Math.sin(ray.angle)];
+        for(const ray of rays){
+          if(ray.range<p.maxRange){
+            ray.range=Math.max(0,Math.min(p.maxRange,ray.range+rng.normal(p.sigmaLaser)));
+            ray.endpoint=[truth[0]+ray.range*Math.cos(ray.angle),truth[1]+ray.range*Math.sin(ray.angle)];
+          }
+          ray.probability=ray.range<p.maxRange?laserBeamProbability(ray.endpoint,p,map):null;
         }
         applyLaser(particles,logWeights,rays,p,map);
       }

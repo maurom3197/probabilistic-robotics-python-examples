@@ -13,6 +13,8 @@ const {chromium}=require('playwright');
     await page.waitForFunction(()=>document.querySelector('#startX')?.min==='0');
     assert.equal(await page.getAttribute('html','lang'),'en');
     assert.equal(await page.locator('.sensor-experiment').count(),2);
+    assert.doesNotMatch(await page.locator('#pf-landmark .legend').first().textContent(),/Predicted 95%|Corrected 95%/);
+    assert.doesNotMatch(await page.locator('#pf-laser .legend').first().textContent(),/Predicted 95%|Corrected 95%/);
     assert.equal(await page.locator('#lm-map-choice option').count(),7);
     assert.equal(await page.locator('#laser-map-choice option').count(),7);
     for(const [id,min,max,step] of [
@@ -20,7 +22,8 @@ const {chromium}=require('playwright');
       ['lm-sigma-v','0','1','0.01'],['lm-sigma-omega','0','1','0.01'],
       ['lm-sigma-range','0.05','1','0.01'],['lm-sigma-bearing','1','45','0.01'],
       ['laser-sigma-hit','0.05','2','0.01'],['laser-fov','1','360','1'],
-      ['laser-num-rays','1','360','1'],['startX','0','21.9','0.1']
+      ['laser-num-rays','1','360','1'],['startX','0','21.9','0.1'],
+      ['lm-particles','50','2000','1'],['laser-particles','50','2000','1']
     ]){
       for(const control of [id,id+'-slider']){
         assert.equal(await page.getAttribute('#'+control,'min'),min);
@@ -41,10 +44,14 @@ const {chromium}=require('playwright');
         return cells[row][col]===1&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>cells[row+dx]?.[col+dy]===0);
       });
       const larger=runPfSimulation({...p,particles:600,duration:2},landmarkMap);
+      const laserRays=laser.frames.find(f=>f.rays)?.rays||[];
+      const validLaserRays=laserRays.filter(ray=>ray.probability!==null);
       return {landmarks:PF_LANDMARKS.length,validLandmarks,cloud:larger.frames[0].cloud.length,maps:[landmarkMap.rows,laserMap.rows],frames:[first.frames.length,laser.frames.length],
         updates:[first.pfErrors.length,laser.pfErrors.length],
         detected:first.frames.reduce((n,f)=>n+f.detected.length,0),
-        laserRays:laser.frames.find(f=>f.rays)?.rays.length,
+        laserRays:laserRays.length,validLaserRays:validLaserRays.length,
+        laserProbabilities:validLaserRays.every(ray=>Number.isFinite(ray.probability)&&ray.probability>=0&&ray.probability<=1),
+        initialParticlesFree:larger.frames[0].cloud.every(([x,y])=>landmarkMap.cells[Math.floor(x)][Math.floor(y)]===0),
         deterministic:JSON.stringify(first.pfErrors)===JSON.stringify(second.pfErrors),
         finite:[first,laser].every(run=>run.frames.every(f=>f.estimate.every(Number.isFinite))),
         simGtErrors:[first.simGtErrors.length,laser.simGtErrors.length],
@@ -53,17 +60,19 @@ const {chromium}=require('playwright');
     assert.equal(model.landmarks,10);
     assert.ok(model.validLandmarks);
     assert.equal(model.cloud,500);
+    assert.ok(model.initialParticlesFree);
     assert.deepEqual(model.maps,[22,22]);
     assert.deepEqual(model.frames,[41,41]);
     assert.deepEqual(model.updates,[4,4]);
     assert.ok(model.detected>0);
     assert.equal(model.laserRays,12);
+    assert.ok(model.validLaserRays>0&&model.laserProbabilities);
     assert.ok(model.deterministic&&model.finite&&model.noOdometry);
     assert.deepEqual(model.simGtErrors,[41,41]);
 
     const blank=await page.locator('#lm-trajectory').evaluate(canvas=>canvas.toDataURL());
     await page.fill('#lm-duration','8');
-    await page.fill('#lm-particles','100');
+    await page.fill('#lm-particles','101');
     await page.click('#lm-run');
     await page.waitForFunction(()=>document.querySelector('#lm-state').textContent.includes('Run 1'));
     assert.equal(await page.getAttribute('#lm-frame','max'),'80');
@@ -86,7 +95,7 @@ const {chromium}=require('playwright');
     assert.equal(await page.inputValue('#startX'),'19.5');
     assert.equal(await page.inputValue('#startY'),'2.5');
     await page.fill('#laser-duration','4');
-    await page.fill('#laser-particles','100');
+    await page.fill('#laser-particles','101');
     await page.fill('#laser-num-rays','12');
     await page.click('#laser-run');
     await page.waitForFunction(()=>document.querySelector('#laser-state').textContent.includes('Run 1'));
