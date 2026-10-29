@@ -55,6 +55,7 @@ jobs:
           python -c "import urllib.request,time; time.sleep(1); urllib.request.urlopen('http://127.0.0.1:8765/').close()"
           node tests/velocity_browser_e2e.cjs
           node tests/sensor_browser_e2e.cjs
+          node tests/ekf_browser_e2e.cjs
       - name: Record generated site on gh-pages
         working-directory: site
         env:
@@ -79,6 +80,8 @@ jobs:
             site/velocity-mobile.png
             site/sensor-desktop.png
             site/sensor-mobile.png
+            site/ekf-desktop.png
+            site/ekf-mobile.png
   deploy:
     needs: build
     if: github.event_name == 'workflow_call'

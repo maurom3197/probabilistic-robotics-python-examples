@@ -1,0 +1,5 @@
+.ekf-canvas{display:block;width:100%;height:430px;margin-top:12px;background:#fbfdff}
+.ekf-error-canvas{height:260px}.ekf-green{background:#1a9a75}
+.ekf-event,.ekf-chart-note{padding:0 20px 12px;margin-top:8px}.ekf-event{min-height:30px}
+#ekf-form details{margin-bottom:19px}#ekf-form details .hint{margin-bottom:4px}
+@media(max-width:720px){.ekf-canvas{height:340px}.ekf-error-canvas{height:250px}}

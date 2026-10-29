@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Gaussian Filters (EKF) page in the Probabilistic Robotics interactive examples.">
+  <meta name="description" content="Interactive EKF localization with landmarks, covariance ellipses, and position error plots.">
   <title>Gaussian Filters (EKF) · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./site.css">
+  <link rel="stylesheet" href="./gaussian-filters.css">
 </head>
 <body>
   <header class="topbar">
@@ -17,18 +18,45 @@
     <nav class="site-nav" aria-label="Main navigation"><a href="./">Home</a><a href="./motion-model.html">Motion Model</a><a href="./sensor-model.html">Sensor Model</a><a href="./gaussian-filters.html" aria-current="page">Gaussian Filters</a><a href="./discrete-filters.html">Discrete Filters</a></nav>
     <div class="top-links"><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples" target="_blank" rel="noopener">Repository ↗</a></div>
   </header>
-  <main class="site-main placeholder-main">
-    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="./">Home</a><span aria-hidden="true">/</span><span aria-current="page">Gaussian Filters (EKF)</span></nav>
-    <section class="placeholder-hero" aria-labelledby="page-title">
-      <p class="eyebrow">INTERACTIVE PAGE / 04</p>
-      <span class="page-status planned">Interactive lab coming soon</span>
-      <h1 id="page-title">Gaussian Filters (EKF)</h1>
-      <p class="placeholder-lead">Gaussian state estimation</p>
-      <p>The repository includes EKF and UKF implementations, localization examples, and a Jacobian notebook.</p>
-      <div class="cover-actions"><a class="button primary" href="./motion-model.html">Explore Motion Model →</a><a class="button secondary" href="./">Back to overview</a></div>
+  <main>
+  <section class="intro"><div><p class="eyebrow">GAUSSIAN FILTERS / 04</p><h1>Locate the robot with an EKF.</h1><p class="subtitle">Explore how velocity predictions and landmark measurements change the estimated trajectory and its uncertainty.</p></div><a class="text-link" href="#how-it-works">How it works ↓</a></section>
+  <div class="lab-grid">
+    <aside class="controls card" aria-label="EKF parameters">
+      <div class="section-title"><h2>Parameters</h2><span class="small-label">EKF LOCALIZATION</span></div>
+      <p class="hint">Adjust the command and noise, then press <strong>Run simulation</strong>. The ten landmarks and initial pose come from the Python example.</p>
+      <form id="ekf-form" novalidate>
+        <fieldset><legend>Velocity command</legend><div id="ekf-command-controls"></div></fieldset>
+        <fieldset><legend>Velocity motion noise</legend><div id="ekf-motion-noise-controls"></div></fieldset>
+        <fieldset><legend>Landmark sensor</legend><div id="ekf-sensor-controls"></div></fieldset>
+        <fieldset><legend>Landmark measurement noise</legend><div id="ekf-measurement-noise-controls"></div></fieldset>
+        <details><summary>Simulation settings</summary><div id="ekf-experiment-controls"></div><p class="hint">The robot moves every 0.1 s. The filter checks landmarks at the selected EKF interval.</p></details>
+        <button class="button primary run-button" id="run-ekf" type="submit">▶ Run simulation</button>
+        <p id="ekf-error" class="error" role="alert" hidden></p>
+      </form>
+    </aside>
+    <section class="results" aria-label="EKF results">
+      <div class="stage card"><div class="stage-heading"><div><p class="eyebrow">ROBOT LOCALIZATION</p><h2>Trajectories and position uncertainty</h2></div><span id="ekf-state" class="badge">Waiting for a run</span></div>
+        <div class="legend"><span><i class="line blue"></i>Ground truth</span><span><i class="line orange"></i>Odometry</span><span><i class="line purple"></i>EKF estimate</span><span><i class="dot ekf-green"></i>Detected landmark</span><span><i class="line pale"></i>95% ellipse</span></div>
+        <canvas id="ekf-trajectory" class="ekf-canvas" role="img" aria-label="Animated true, odometry and EKF paths with landmarks and covariance ellipse"></canvas>
+        <p id="ekf-event" class="hint ekf-event" aria-live="polite">Run the simulation to see landmark updates.</p>
+        <div class="playback"><button id="ekf-play" class="button secondary" type="button" disabled>▶ Play</button><label for="ekf-frame" class="sr-only">Displayed step</label><input id="ekf-frame" type="range" min="0" max="1" step="1" value="0" disabled><output id="ekf-time">t = —</output><label for="ekf-speed" class="sr-only">Playback speed</label><select id="ekf-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+      </div>
+      <div class="stage card"><div class="stage-heading"><div><p class="eyebrow">POSITION ERROR</p><h2>EKF estimate vs. odometry</h2></div><span class="small-label">DISTANCE TO GROUND TRUTH</span></div>
+        <div class="legend"><span><i class="line purple"></i>EKF at updates</span><span><i class="line orange"></i>Odometry every step</span><span><i class="dot blue"></i>Current time</span></div>
+        <canvas id="ekf-error-chart" class="ekf-canvas ekf-error-canvas" role="img" aria-label="EKF and odometry position error over time"></canvas><p class="hint ekf-chart-note">EKF error is plotted at filter updates; odometry error is plotted at every simulation step.</p>
+      </div>
+      <div class="metrics" aria-label="Current frame statistics">
+        <div class="metric card"><span>EKF position error</span><strong id="ekf-position-error">—</strong><small>m · current frame</small></div>
+        <div class="metric card"><span>Odometry error</span><strong id="ekf-odometry-error">—</strong><small>m · current frame</small></div>
+        <div class="metric card"><span>Position σ</span><strong id="ekf-position-sigma">—</strong><small>x / y · m</small></div>
+        <div class="metric card"><span>Detected landmarks</span><strong id="ekf-detections">—</strong><small>at latest update</small></div>
+      </div>
+      <details class="card run-record"><summary>Parameters from the latest run</summary><pre id="ekf-last-parameters">No runs yet.</pre></details>
     </section>
-    <section class="placeholder-source card"><p class="eyebrow">SOURCE IN THE MAIN BRANCH</p><h2>Explore the Python examples</h2><p>This page is reserved for the upcoming interactive lab. The current scripts are available in <code>Gaussian_Filters/</code> in the repository.</p><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/tree/main/Gaussian_Filters/" target="_blank" rel="noopener">View source directory ↗</a></section>
-    <footer><span>Probabilistic Robotics · Interactive Examples</span><a href="./">All pages ↑</a></footer>
+  </div>
+  <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
+  <footer><span>Probabilistic Robotics · Gaussian Filters (EKF)</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/blob/main/Gaussian_Filters/ekf_robot_landmarks.py" target="_blank" rel="noopener">View Python example ↗</a></footer>
   </main>
+  <script type="module" src="./gaussian-filters.js"></script>
 </body>
 </html>
