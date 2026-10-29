@@ -7,7 +7,7 @@
   <title>Gaussian Filters (EKF) · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./site.css">
-  <link rel="stylesheet" href="./gaussian-filters.css">
+  <link rel="stylesheet" href="./gaussian-filters.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -23,12 +23,21 @@
   <div class="lab-grid">
     <aside class="controls card" aria-label="EKF parameters">
       <div class="section-title"><h2>Parameters</h2><span class="small-label">EKF LOCALIZATION</span></div>
-      <p class="hint">Adjust the command and noise, then press <strong>Run simulation</strong>. The ten landmarks and initial pose come from the Python example.</p>
+      <p class="hint">Adjust the command and noise, then press <strong>Run simulation</strong>. The initial pose comes from the Python example. Edit the landmark map below.</p>
       <form id="ekf-form" novalidate>
         <fieldset><legend>Velocity command</legend><div id="ekf-command-controls"></div></fieldset>
         <fieldset><legend>Velocity motion noise</legend><div id="ekf-motion-noise-controls"></div></fieldset>
         <fieldset><legend>Landmark sensor</legend><div id="ekf-sensor-controls"></div></fieldset>
         <fieldset><legend>Landmark measurement noise</legend><div id="ekf-measurement-noise-controls"></div></fieldset>
+        <details class="landmark-editor" open><summary>Landmark map</summary>
+          <p class="hint">Click the map to add a landmark, or edit coordinates below. Coordinates are in meters from −20 to 20.</p>
+          <canvas id="ekf-landmark-map" class="ekf-map-canvas" role="img" aria-label="Editable landmark map; click to add a landmark"></canvas>
+          <div class="ekf-map-actions"><button id="ekf-add-landmark" class="button secondary" type="button">+ Add</button><button id="ekf-reset-landmarks" class="button quiet" type="button">Restore example</button><button id="ekf-clear-landmarks" class="button quiet" type="button">Clear</button></div>
+          <div class="landmark-list-heading"><span>Landmark</span><span>x [m]</span><span>y [m]</span><span></span></div>
+          <div id="ekf-landmark-rows" class="ekf-landmark-rows"></div>
+          <div class="ekf-map-actions"><button id="ekf-save-map" class="button quiet" type="button">Download map JSON ↓</button><label class="button quiet ekf-load-label" for="ekf-load-map">Load map JSON ↑</label><input id="ekf-load-map" class="sr-only" type="file" accept=".json,application/json"></div>
+          <p id="ekf-map-error" class="error" role="alert" hidden></p>
+        </details>
         <details><summary>Simulation settings</summary><div id="ekf-experiment-controls"></div><p class="hint">The robot moves every 0.1 s. The filter checks landmarks at the selected EKF interval.</p></details>
         <button class="button primary run-button" id="run-ekf" type="submit">▶ Run simulation</button>
         <p id="ekf-error" class="error" role="alert" hidden></p>
@@ -36,9 +45,9 @@
     </aside>
     <section class="results" aria-label="EKF results">
       <div class="stage card"><div class="stage-heading"><div><p class="eyebrow">ROBOT LOCALIZATION</p><h2>Trajectories and position uncertainty</h2></div><span id="ekf-state" class="badge">Waiting for a run</span></div>
-        <div class="legend"><span><i class="line blue"></i>Ground truth</span><span><i class="line orange"></i>Odometry</span><span><i class="line purple"></i>EKF estimate</span><span><i class="dot ekf-green"></i>Detected landmark</span><span><i class="line pale"></i>95% ellipse</span></div>
+        <div class="legend"><span><i class="line blue"></i>Ground truth</span><span><i class="line orange"></i>Odometry</span><span><i class="line purple"></i>EKF estimate</span><span><i class="dot ekf-green"></i>Detected landmark</span><span><i class="line ekf-prior-key"></i>Predicted 95%</span><span><i class="line ekf-posterior-key"></i>Corrected 95%</span></div>
         <canvas id="ekf-trajectory" class="ekf-canvas" role="img" aria-label="Animated true, odometry and EKF paths with landmarks and covariance ellipse"></canvas>
-        <p id="ekf-event" class="hint ekf-event" aria-live="polite">Run the simulation to see landmark updates.</p>
+        <p id="ekf-event" class="hint ekf-event" aria-live="polite">Run the simulation to see covariance snapshots and landmark updates.</p>
         <div class="playback"><button id="ekf-play" class="button secondary" type="button" disabled>▶ Play</button><label for="ekf-frame" class="sr-only">Displayed step</label><input id="ekf-frame" type="range" min="0" max="1" step="1" value="0" disabled><output id="ekf-time">t = —</output><label for="ekf-speed" class="sr-only">Playback speed</label><select id="ekf-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
       </div>
       <div class="stage card"><div class="stage-heading"><div><p class="eyebrow">POSITION ERROR</p><h2>EKF estimate vs. odometry</h2></div><span class="small-label">DISTANCE TO GROUND TRUTH</span></div>
@@ -54,9 +63,9 @@
       <details class="card run-record"><summary>Parameters from the latest run</summary><pre id="ekf-last-parameters">No runs yet.</pre></details>
     </section>
   </div>
-  <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
+  <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. Prediction and correction ellipses remain visible at about one-third intervals through the run. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
   <footer><span>Probabilistic Robotics · Gaussian Filters (EKF)</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/blob/main/Gaussian_Filters/ekf_robot_landmarks.py" target="_blank" rel="noopener">View Python example ↗</a></footer>
   </main>
-  <script type="module" src="./gaussian-filters.js"></script>
+  <script type="module" src="./gaussian-filters.js?v=2"></script>
 </body>
 </html>

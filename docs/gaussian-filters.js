@@ -1,5 +1,6 @@
-import {runEkfSimulation} from './gaussian-filters-core.js';
-import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js';
+import {runEkfSimulation} from './gaussian-filters-core.js?v=2';
+import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=2';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=2';
 
 const PARAMETERS=[
   ['v','Linear velocity v (m/s)',0,2,.8,.01,'command'],
@@ -15,7 +16,7 @@ const PARAMETERS=[
   ['seed','Random seed',0,999999,42,1,'experiment'],
 ];
 const $=id=>document.getElementById(id);
-let result=null,frameIndex=0,runCount=0,timer=null,lastParameters=null;
+let result=null,frameIndex=0,runCount=0,timer=null,lastParameters=null,lastLandmarkSignature=null,editor=null;
 function stop(){
   if(timer!==null)clearInterval(timer);
   timer=null;$('ekf-play').textContent='▶ Play';
@@ -23,7 +24,7 @@ function stop(){
 function markDraft(){
   const badge=$('ekf-state');
   if(!result){badge.textContent='Waiting for a run';badge.className='badge';return;}
-  const dirty=PARAMETERS.some(([key])=>Number($(key).value)!==lastParameters[key]);
+  const dirty=PARAMETERS.some(([key])=>Number($(key).value)!==lastParameters[key])||editor.signature()!==lastLandmarkSignature;
   badge.textContent=dirty?'Parameters changed · press Run':'Run '+runCount+' complete';
   badge.className='badge '+(dirty?'pending':'done');
 }
@@ -68,6 +69,7 @@ function readParameters(){
     }
     p[key]=value;
   }
+  p.landmarks=editor.read();
   return p;
 }
 function current(){
@@ -81,7 +83,7 @@ function display(index){
   $('ekf-time').textContent='t = '+f.time.toFixed(1)+' s';
   if(f.update){
     $('ekf-event').textContent=f.detected.length
-      ? f.detected.length+' landmark'+(f.detected.length===1?'':'s')+' detected. Dashed ellipse: prior; green ellipse: corrected position uncertainty.'
+      ? f.detected.length+' landmark'+(f.detected.length===1?'':'s')+' detected. Dashed ellipse: predicted; green ellipse: corrected 95% uncertainty.'
       : 'EKF prediction completed. No landmark was detected at this update.';
   }else if(latest){
     $('ekf-event').textContent='Moving between EKF updates · '+latest.detected.length+' landmark'+(latest.detected.length===1?'':'s')+' detected at the last update.';
@@ -111,11 +113,12 @@ function play(){
 }
 function init(){
   PARAMETERS.forEach(makeControl);
+  editor=createLandmarkEditor(markDraft);
   $('ekf-form').addEventListener('submit',event=>{
     event.preventDefault();$('ekf-error').hidden=true;
     try{
       const p=readParameters();
-      stop();result=runEkfSimulation(p);lastParameters={...p};runCount++;
+      stop();result=runEkfSimulation(p);lastParameters={...p};lastLandmarkSignature=editor.signature();runCount++;
       $('ekf-state').textContent='Run '+runCount+' complete';$('ekf-state').className='badge done';
       $('ekf-last-parameters').textContent=JSON.stringify(p,null,2);
       $('ekf-frame').max=String(result.frames.length-1);$('ekf-frame').disabled=false;

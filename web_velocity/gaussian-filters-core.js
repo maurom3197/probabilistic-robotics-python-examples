@@ -86,6 +86,11 @@ function frame(time,truth,odometry,estimate,covariance,detected,update,prior=nul
 }
 export function runEkfSimulation(p) {
   if(!Number.isInteger(p.seed)||p.seed<0) throw new Error('Random seed must be a non-negative integer.');
+  const landmarks=p.landmarks===undefined?EKF_LANDMARKS:p.landmarks;
+  if(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>Array.isArray(point)&&point.length===2&&point.every(value=>Number.isFinite(value)&&value>=-20&&value<=20))) {
+    throw new Error('The landmark map must contain up to 20 points with x and y between −20 and 20 m.');
+  }
+  const map=landmarks.map(point=>[...point]);
   const normal=randomGenerator(p.seed), simStep=.1, steps=Math.round(p.duration/simStep);
   const ekfStep=Math.round(p.ekfDt/simStep);
   let truth=[1,6,.3],odometry=[1,6,.3],estimate=[1,6,.3];
@@ -100,10 +105,10 @@ export function runEkfSimulation(p) {
       update=true;
       ({mean:estimate,covariance}=predict(estimate,covariance,p,p.ekfDt,normal));
       prior={mean:[...estimate],covariance:covariance.map(row=>[...row])};
-      for(let j=0;j<EKF_LANDMARKS.length;j++){
-        const z=noisyMeasurement(truth,EKF_LANDMARKS[j],p,normal);
+      for(let j=0;j<map.length;j++){
+        const z=noisyMeasurement(truth,map[j],p,normal);
         if(z[0]<=p.maxRange&&Math.abs(z[1])<=p.fov*Math.PI/360){
-          ({mean:estimate,covariance}=correct(estimate,covariance,z,EKF_LANDMARKS[j],p,normal));
+          ({mean:estimate,covariance}=correct(estimate,covariance,z,map[j],p,normal));
           detected.push(j);
         }
       }
@@ -113,5 +118,9 @@ export function runEkfSimulation(p) {
     frames.push(next);odometryErrors.push({time:next.time,error:next.odometryError});
     if(!next.estimate.every(Number.isFinite)||!covariance.flat().every(Number.isFinite)) throw new Error('EKF became unstable. Try lower noise or a different command.');
   }
-  return {parameters:{...p},landmarks:EKF_LANDMARKS,frames,ekfErrors,odometryErrors};
+  const updateIndices=frames.map((f,index)=>f.update?index:null).filter(index=>index!==null);
+  const snapshotIndices=[p.duration/3,2*p.duration/3,p.duration]
+    .map(target=>updateIndices.reduce((best,index)=>best===null||Math.abs(frames[index].time-target)<Math.abs(frames[best].time-target)?index:best,null))
+    .filter((index,position,array)=>index!==null&&array.indexOf(index)===position);
+  return {parameters:{...p,landmarks:map.map(point=>[...point])},landmarks:map,frames,ekfErrors,odometryErrors,snapshotIndices};
 }

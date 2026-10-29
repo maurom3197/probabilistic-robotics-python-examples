@@ -41,8 +41,9 @@ export function drawTrajectory(canvas,result,index){
   if(!result){ctx.fillStyle=COLORS.muted;ctx.textAlign='center';ctx.fillText('Run the simulation to see the trajectories.',width/2,height/2);return;}
   const shown=result.frames[Math.max(0,Math.min(index,result.frames.length-1))];
   const all=[...result.landmarks,...result.frames.map(f=>f.truth),...result.frames.map(f=>f.odometry),...result.frames.map(f=>f.estimate)];
-  let minX=Math.min(...all.map(p=>p[0]))-1.5,maxX=Math.max(...all.map(p=>p[0]))+1.5;
-  let minY=Math.min(...all.map(p=>p[1]))-1.5,maxY=Math.max(...all.map(p=>p[1]))+1.5;
+  const margin=Math.max(1.5,Math.min(6,2.448*Math.sqrt(Math.max(...result.frames.map(f=>Math.max(f.covariance[0][0],f.covariance[1][1]))))));
+  let minX=Math.min(...all.map(p=>p[0]))-margin,maxX=Math.max(...all.map(p=>p[0]))+margin;
+  let minY=Math.min(...all.map(p=>p[1]))-margin,maxY=Math.max(...all.map(p=>p[1]))+margin;
   const left=44,right=18,top=18,bottom=36,plotW=width-left-right,plotH=height-top-bottom;
   const scale=Math.min(plotW/(maxX-minX),plotH/(maxY-minY));
   const extraX=(plotW-(maxX-minX)*scale)/2,extraY=(plotH-(maxY-minY)*scale)/2;
@@ -62,8 +63,23 @@ export function drawTrajectory(canvas,result,index){
   line(ctx,frames.map(f=>[toX(f.truth[0]),toY(f.truth[1])]),COLORS.truth,2.4);
   line(ctx,frames.map(f=>[toX(f.odometry[0]),toY(f.odometry[1])]),COLORS.odometry,1.8,[5,4]);
   line(ctx,frames.filter((f,i)=>i===0||f.update).map(f=>[toX(f.estimate[0]),toY(f.estimate[1])]),COLORS.estimate,2.4);
-  if(shown.prior)ellipse(ctx,shown.prior.mean,shown.prior.covariance,toX,toY,scale,'#64748b',true);
-  ellipse(ctx,shown.estimate,shown.covariance,toX,toY,scale,shown.detected.length?COLORS.detected:'#bba5dc');
+  // Keep three prediction/correction pairs visible as playback passes each selected update.
+  const snapshots=result.snapshotIndices||[];
+  for(const snapshotIndex of snapshots){
+    if(snapshotIndex>index)continue;
+    const f=result.frames[snapshotIndex];
+    if(!f.prior)continue;
+    ctx.save();ctx.globalAlpha=snapshotIndex===index?.95:.58;
+    ellipse(ctx,f.prior.mean,f.prior.covariance,toX,toY,scale,'#64748b',true);
+    if(f.detected.length)ellipse(ctx,f.estimate,f.covariance,toX,toY,scale,COLORS.detected);
+    ctx.restore();
+    ctx.fillStyle='#227548';ctx.textAlign='left';
+    ctx.fillText('t = '+f.time.toFixed(1)+' s',toX(f.estimate[0])+8,toY(f.estimate[1])-10);
+  }
+  if(!snapshots.includes(index)){
+    if(shown.prior)ellipse(ctx,shown.prior.mean,shown.prior.covariance,toX,toY,scale,'#64748b',true);
+    if(!shown.prior||shown.detected.length)ellipse(ctx,shown.estimate,shown.covariance,toX,toY,scale,shown.detected.length?COLORS.detected:'#bba5dc');
+  }
   robot(ctx,toX(shown.truth[0]),toY(shown.truth[1]),shown.truth[2],COLORS.truth,scale);
   robot(ctx,toX(shown.odometry[0]),toY(shown.odometry[1]),shown.odometry[2],COLORS.odometry,scale);
   robot(ctx,toX(shown.estimate[0]),toY(shown.estimate[1]),shown.estimate[2],COLORS.estimate,scale);
