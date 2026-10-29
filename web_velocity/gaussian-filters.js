@@ -1,6 +1,6 @@
-import {runEkfSimulation} from './gaussian-filters-core.js?v=2';
-import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=2';
-import {createLandmarkEditor} from './gaussian-filters-map.js?v=2';
+import {runEkfSimulation} from './gaussian-filters-core.js?v=3';
+import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=3';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=3';
 
 const PARAMETERS=[
   ['v','Linear velocity v (m/s)',0,2,.8,.01,'command'],
@@ -11,6 +11,9 @@ const PARAMETERS=[
   ['maxRange','Maximum range (m)',.1,20,8,.1,'sensor'],
   ['sigmaRange','Range σ (m)',.05,1,.1,.01,'measurement-noise'],
   ['sigmaBearing','Bearing σ (°)',1,45,1,.01,'measurement-noise'],
+  ['startX','Start x (m)',-20,20,1,.1,'start-pose'],
+  ['startY','Start y (m)',-20,20,6,.1,'start-pose'],
+  ['startTheta','Start heading θ (°)',-180,180,17.19,.01,'start-pose'],
   ['ekfDt','EKF interval (s)',.1,1,1,.1,'experiment'],
   ['duration','Duration (s)',2,60,22,1,'experiment'],
   ['seed','Random seed',0,999999,42,1,'experiment'],
@@ -69,6 +72,7 @@ function readParameters(){
     }
     p[key]=value;
   }
+  p.initialPose=[p.startX,p.startY,p.startTheta*Math.PI/180];
   p.landmarks=editor.read();
   return p;
 }

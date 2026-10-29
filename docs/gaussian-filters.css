@@ -16,3 +16,4 @@
 .ekf-landmark-row{font-size:10px;color:var(--muted);margin-bottom:5px}
 .ekf-landmark-row input{width:100%;min-width:0;padding:5px 2px;text-align:right;border:1px solid var(--line);border-radius:6px;background:#fbfcff;color:var(--ink);font-size:11px}
 .ekf-landmark-row .button{padding:4px;min-width:24px}
+.ekf-map-subtitle{margin:14px 0 8px;font-size:11px;color:var(--ink)}

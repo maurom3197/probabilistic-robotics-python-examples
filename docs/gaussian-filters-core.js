@@ -91,9 +91,14 @@ export function runEkfSimulation(p) {
     throw new Error('The landmark map must contain up to 20 points with x and y between −20 and 20 m.');
   }
   const map=landmarks.map(point=>[...point]);
+  const start=p.initialPose===undefined?[1,6,.3]:p.initialPose;
+  if(!Array.isArray(start)||start.length!==3||!start.every(Number.isFinite)||start[0]<-20||start[0]>20||start[1]<-20||start[1]>20||start[2]<-Math.PI-1e-12||start[2]>Math.PI+1e-12) {
+    throw new Error('Robot starting pose must have x and y between −20 and 20 m and heading between −180° and 180°.');
+  }
+  const initialPose=[...start];
   const normal=randomGenerator(p.seed), simStep=.1, steps=Math.round(p.duration/simStep);
   const ekfStep=Math.round(p.ekfDt/simStep);
-  let truth=[1,6,.3],odometry=[1,6,.3],estimate=[1,6,.3];
+  let truth=[...initialPose],odometry=[...initialPose],estimate=[...initialPose];
   let covariance=[[.1,0,0],[0,.1,0],[0,0,.1]];
   const frames=[frame(0,truth,odometry,estimate,covariance,[],false)];
   const ekfErrors=[{time:0,error:0}],odometryErrors=[{time:0,error:0}];
@@ -119,8 +124,8 @@ export function runEkfSimulation(p) {
     if(!next.estimate.every(Number.isFinite)||!covariance.flat().every(Number.isFinite)) throw new Error('EKF became unstable. Try lower noise or a different command.');
   }
   const updateIndices=frames.map((f,index)=>f.update?index:null).filter(index=>index!==null);
-  const snapshotIndices=[p.duration/3,2*p.duration/3,p.duration]
+  const snapshotIndices=Array.from({length:4},(_,i)=>p.duration*(i+1)/4)
     .map(target=>updateIndices.reduce((best,index)=>best===null||Math.abs(frames[index].time-target)<Math.abs(frames[best].time-target)?index:best,null))
     .filter((index,position,array)=>index!==null&&array.indexOf(index)===position);
-  return {parameters:{...p,landmarks:map.map(point=>[...point])},landmarks:map,frames,ekfErrors,odometryErrors,snapshotIndices};
+  return {parameters:{...p,initialPose:[...initialPose],landmarks:map.map(point=>[...point])},landmarks:map,frames,ekfErrors,odometryErrors,snapshotIndices};
 }

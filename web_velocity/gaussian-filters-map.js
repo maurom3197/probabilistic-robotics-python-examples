@@ -1,4 +1,4 @@
-import {EKF_LANDMARKS} from './gaussian-filters-core.js?v=2';
+import {EKF_LANDMARKS} from './gaussian-filters-core.js?v=3';
 
 const $=id=>document.getElementById(id);
 const LIMIT=20,MAX_POINTS=20;
@@ -36,7 +36,15 @@ export function createLandmarkEditor(onChange){
       ctx.fillStyle='#2454d7';ctx.fillRect(x-4,y-4,8,8);
       ctx.textAlign='left';ctx.fillStyle='#17243d';ctx.fillText(String(index+1),x+6,y-5);
     });
-    if(!points.length){ctx.textAlign='center';ctx.fillStyle='#64748b';ctx.fillText('Click to add a landmark',width/2,height/2);}
+    const startX=$('startX').valueAsNumber,startY=$('startY').valueAsNumber,heading=$('startTheta').valueAsNumber;
+    if(Number.isFinite(startX)&&Number.isFinite(startY)&&Number.isFinite(heading)&&Math.abs(startX)<=LIMIT&&Math.abs(startY)<=LIMIT){
+      const x=g.toX(startX),y=g.toY(startY),angle=heading*Math.PI/180;
+      const dx=Math.cos(angle),dy=-Math.sin(angle),px=-dy,py=dx;
+      ctx.beginPath();ctx.moveTo(x+13*dx,y+13*dy);
+      ctx.lineTo(x-6*dx+5*px,y-6*dy+5*py);ctx.lineTo(x-6*dx-5*px,y-6*dy-5*py);ctx.closePath();
+      ctx.fillStyle='#ec8b30';ctx.fill();ctx.textAlign='left';ctx.fillText('start',x+9,y+16);
+    }
+    if(!points.length){ctx.textAlign='center';ctx.fillStyle='#64748b';ctx.fillText('Click to add a landmark',width/2,height/2+40);}
   }
   function render(){
     host.replaceChildren();
@@ -89,6 +97,26 @@ export function createLandmarkEditor(onChange){
   function signature(){
     return JSON.stringify(Array.from(host.children,row=>Array.from(row.querySelectorAll('input'),input=>input.value)));
   }
+  function readPose(){
+    const values=[['startX',-20,20],['startY',-20,20],['startTheta',-180,180]].map(([id,min,max])=>{
+      const input=$(id),value=input.valueAsNumber;
+      if(!Number.isFinite(value)||value<min||value>max||input.validity.stepMismatch){
+        input.focus();throw new Error('Robot starting pose: enter valid x, y, and heading values.');
+      }
+      return value;
+    });
+    return {x:values[0],y:values[1],headingDegrees:values[2]};
+  }
+  function setPose(value){
+    if(!value||typeof value!=='object'||!Number.isFinite(value.x)||!Number.isFinite(value.y)||!Number.isFinite(value.headingDegrees)||Math.abs(value.x)>LIMIT||Math.abs(value.y)>LIMIT||Math.abs(value.headingDegrees)>180){
+      throw new Error('Robot start must contain x and y from −20 to 20 m and heading from −180° to 180°.');
+    }
+    for(const [id,raw,decimals] of [['startX',value.x,1],['startY',value.y,1],['startTheta',value.headingDegrees,2]]){
+      const rounded=Number(raw.toFixed(decimals));
+      $(id).value=rounded.toFixed(decimals);$(id+'-slider').value=String(rounded);
+    }
+    draw();onChange();
+  }
   $('ekf-add-landmark').addEventListener('click',()=>add([0,0]));
   $('ekf-reset-landmarks').addEventListener('click',()=>setPoints(EKF_LANDMARKS));
   $('ekf-clear-landmarks').addEventListener('click',()=>setPoints([]));
@@ -100,7 +128,7 @@ export function createLandmarkEditor(onChange){
   });
   $('ekf-save-map').addEventListener('click',()=>{
     try{
-      const data=JSON.stringify({landmarks:read()},null,2);
+      const data=JSON.stringify({startPose:readPose(),landmarks:read()},null,2);
       const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
       const link=document.createElement('a');link.href=url;link.download='ekf-landmark-map.json';
       document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -109,12 +137,22 @@ export function createLandmarkEditor(onChange){
   });
   $('ekf-load-map').addEventListener('change',async event=>{
     const file=event.target.files?.[0];if(!file)return;
-    try{const parsed=JSON.parse(await file.text());setPoints(Array.isArray(parsed)?parsed:parsed.landmarks);}
+    try{
+      const parsed=JSON.parse(await file.text()),landmarks=Array.isArray(parsed)?parsed:parsed.landmarks;
+      if(!Array.isArray(landmarks)||landmarks.length>MAX_POINTS||!landmarks.every(validPoint))throw new Error('Map must contain up to 20 [x, y] points between −20 and 20 m.');
+      if(!Array.isArray(parsed)&&parsed.startPose!==undefined){
+        const pose=parsed.startPose;
+        if(!pose||!Number.isFinite(pose.x)||!Number.isFinite(pose.y)||!Number.isFinite(pose.headingDegrees)||Math.abs(pose.x)>LIMIT||Math.abs(pose.y)>LIMIT||Math.abs(pose.headingDegrees)>180)throw new Error('Invalid robot starting pose in map file.');
+      }
+      setPoints(landmarks);
+      if(!Array.isArray(parsed)&&parsed.startPose!==undefined)setPose(parsed.startPose);
+    }
     catch(cause){showError(cause.message);}
     event.target.value='';
   });
+  for(const id of ['startX','startY','startTheta'])for(const suffix of ['', '-slider'])$(id+suffix).addEventListener('input',draw);
   if('ResizeObserver' in window)new ResizeObserver(draw).observe(canvas);
   else window.addEventListener('resize',draw);
   render();
-  return {read,signature};
+  return {read,signature,readPose};
 }

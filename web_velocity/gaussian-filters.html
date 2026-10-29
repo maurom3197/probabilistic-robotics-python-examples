@@ -7,7 +7,7 @@
   <title>Gaussian Filters (EKF) · Probabilistic Robotics</title>
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./site.css">
-  <link rel="stylesheet" href="./gaussian-filters.css?v=2">
+  <link rel="stylesheet" href="./gaussian-filters.css?v=3">
 </head>
 <body>
   <header class="topbar">
@@ -23,14 +23,15 @@
   <div class="lab-grid">
     <aside class="controls card" aria-label="EKF parameters">
       <div class="section-title"><h2>Parameters</h2><span class="small-label">EKF LOCALIZATION</span></div>
-      <p class="hint">Adjust the command and noise, then press <strong>Run simulation</strong>. The initial pose comes from the Python example. Edit the landmark map below.</p>
+      <p class="hint">Adjust the command and noise, then press <strong>Run simulation</strong>. The example starts at (1, 6, 0.3 rad). Edit its starting pose and landmark map below.</p>
       <form id="ekf-form" novalidate>
         <fieldset><legend>Velocity command</legend><div id="ekf-command-controls"></div></fieldset>
         <fieldset><legend>Velocity motion noise</legend><div id="ekf-motion-noise-controls"></div></fieldset>
         <fieldset><legend>Landmark sensor</legend><div id="ekf-sensor-controls"></div></fieldset>
         <fieldset><legend>Landmark measurement noise</legend><div id="ekf-measurement-noise-controls"></div></fieldset>
         <details class="landmark-editor" open><summary>Landmark map</summary>
-          <p class="hint">Click the map to add a landmark, or edit coordinates below. Coordinates are in meters from −20 to 20.</p>
+          <h3 class="ekf-map-subtitle">Robot starting pose</h3><div id="ekf-start-pose-controls"></div>
+          <p class="hint">The orange arrow shows the robot start. Click to add a landmark, or edit coordinates below. Map coordinates are in meters from −20 to 20. JSON files include the start pose and landmarks.</p>
           <canvas id="ekf-landmark-map" class="ekf-map-canvas" role="img" aria-label="Editable landmark map; click to add a landmark"></canvas>
           <div class="ekf-map-actions"><button id="ekf-add-landmark" class="button secondary" type="button">+ Add</button><button id="ekf-reset-landmarks" class="button quiet" type="button">Restore example</button><button id="ekf-clear-landmarks" class="button quiet" type="button">Clear</button></div>
           <div class="landmark-list-heading"><span>Landmark</span><span>x [m]</span><span>y [m]</span><span></span></div>
@@ -63,9 +64,9 @@
       <details class="card run-record"><summary>Parameters from the latest run</summary><pre id="ekf-last-parameters">No runs yet.</pre></details>
     </section>
   </div>
-  <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. Prediction and correction ellipses remain visible at about one-third intervals through the run. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
+  <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. Prediction and correction ellipses remain visible at about one-quarter intervals through the run. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
   <footer><span>Probabilistic Robotics · Gaussian Filters (EKF)</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/blob/main/Gaussian_Filters/ekf_robot_landmarks.py" target="_blank" rel="noopener">View Python example ↗</a></footer>
   </main>
-  <script type="module" src="./gaussian-filters.js?v=2"></script>
+  <script type="module" src="./gaussian-filters.js?v=3"></script>
 </body>
 </html>
