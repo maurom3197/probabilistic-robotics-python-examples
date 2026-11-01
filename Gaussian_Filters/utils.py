@@ -53,6 +53,10 @@ def normalize_angle(theta):
     
     return theta
 
+####################################################
+# Utility functions for Unscented Kalman Filter (UKF)
+####################################################
+
 def state_mean(sigmas, Wm):
     x = np.zeros(3)
 
