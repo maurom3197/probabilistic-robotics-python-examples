@@ -1,0 +1,278 @@
+{
+  "branch": "main",
+  "commit": "7ca4d8a223f9966eeb0e671b5cd263b64fdf993a",
+  "modules": [
+    "Motion_Models",
+    "Sensors_Models",
+    "Gaussian_Filters",
+    "Discrete_Filters",
+    "SLAM",
+    "Mapping"
+  ],
+  "files": [
+    {
+      "path": "2D_maps/map0.png",
+      "module": "2D_maps",
+      "size": 110,
+      "sha256": "3d9d72198607913394f63d837b2376c9aa481144ce8dd05c686b818bc0b5c1fb"
+    },
+    {
+      "path": "2D_maps/map1.png",
+      "module": "2D_maps",
+      "size": 118,
+      "sha256": "8bbc65dc3fc9ce0665503bbf21ca269b8c7658c443a1d38c19ad7037b9e4be1d"
+    },
+    {
+      "path": "2D_maps/map2.png",
+      "module": "2D_maps",
+      "size": 121,
+      "sha256": "a7fe239229b128b6371a7b6a1f4246235eece440af43f7c5c13bf109058e2138"
+    },
+    {
+      "path": "2D_maps/map3.png",
+      "module": "2D_maps",
+      "size": 135,
+      "sha256": "ef5f12125097f327ff833ae974832dc2c05edf2957639bb4a8c657fe34790cc5"
+    },
+    {
+      "path": "2D_maps/map31.png",
+      "module": "2D_maps",
+      "size": 368,
+      "sha256": "3505b478be612b0ea798519ca758d25bae4fe8e0580abc9bfed91957f0f46830"
+    },
+    {
+      "path": "2D_maps/map31_grey.png",
+      "module": "2D_maps",
+      "size": 800,
+      "sha256": "b5d9f28ea27d1ed600f504ce35735a465c60aae1127c521dd74e73de809c6324"
+    },
+    {
+      "path": "2D_maps/map4.png",
+      "module": "2D_maps",
+      "size": 118,
+      "sha256": "1f2aa7f789eaaa8ebc620ea062cd8506d9ecb76a59c2deb202f837384a2fd2a0"
+    },
+    {
+      "path": "Discrete_Filters/__init__.py",
+      "module": "Discrete_Filters",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Discrete_Filters/pf.py",
+      "module": "Discrete_Filters",
+      "size": 7319,
+      "sha256": "b862eb3c07687f1acb61f3cfb249c9a7e1f214a728de112e4e6566cf08a11636"
+    },
+    {
+      "path": "Discrete_Filters/pf_robot_gridmap_landmarks.py",
+      "module": "Discrete_Filters",
+      "size": 10316,
+      "sha256": "73edde2abba290a93c866f0b5a3f1673ced4df417659899099c31e0fc758c5b4"
+    },
+    {
+      "path": "Discrete_Filters/pf_robot_gridmap_laser.py",
+      "module": "Discrete_Filters",
+      "size": 14201,
+      "sha256": "2617955236effd5d1fb1a273f6fd23bc799337a91a30c31993dfd249ce133761"
+    },
+    {
+      "path": "Discrete_Filters/pf_robot_landmarks.py",
+      "module": "Discrete_Filters",
+      "size": 8174,
+      "sha256": "44a3d456b43bf16c8a8f9111e3c0b127237c65f18aaf3bdbedb0a85f25e680a9"
+    },
+    {
+      "path": "Discrete_Filters/plot_utils.py",
+      "module": "Discrete_Filters",
+      "size": 1814,
+      "sha256": "1e8a50f1c53609f3651b85f93fa1973bc9be33113fee59d0759e49144192ea3c"
+    },
+    {
+      "path": "Discrete_Filters/probabilistic_models.py",
+      "module": "Discrete_Filters",
+      "size": 7058,
+      "sha256": "d863da4a5f932e50a4ef82ca1a36f239cabfbd587716fa45e403a21e3568591d"
+    },
+    {
+      "path": "Discrete_Filters/utils.py",
+      "module": "Discrete_Filters",
+      "size": 6301,
+      "sha256": "bf998555cec74f7acad6200bec567270add4edaf2379533184878e22c338e78f"
+    },
+    {
+      "path": "Gaussian_Filters/__init__.py",
+      "module": "Gaussian_Filters",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Gaussian_Filters/ekf.py",
+      "module": "Gaussian_Filters",
+      "size": 3675,
+      "sha256": "492bf8fdaf0f0145512f6232e9a67e113cf89f789ce5e84a8b12e97a78a11690"
+    },
+    {
+      "path": "Gaussian_Filters/ekf_robot_landmarks.py",
+      "module": "Gaussian_Filters",
+      "size": 9017,
+      "sha256": "7f87182adb8cb8c278ec63cc742ff27c33b7f8a7c527fbab75a502c4868e41fa"
+    },
+    {
+      "path": "Gaussian_Filters/jacobians_sympy.ipynb",
+      "module": "Gaussian_Filters",
+      "size": 16171,
+      "sha256": "0edee0a8e2bef125ee7e280fc54bf68989a20120114513c10c6245e480f68725"
+    },
+    {
+      "path": "Gaussian_Filters/plot_utils.py",
+      "module": "Gaussian_Filters",
+      "size": 5949,
+      "sha256": "948c574711b7e8bad29d6cb37471811ff49f6a2e13b9cc6fc3ba693e7fd1e6f8"
+    },
+    {
+      "path": "Gaussian_Filters/probabilistic_models.py",
+      "module": "Gaussian_Filters",
+      "size": 7913,
+      "sha256": "279eeb15fcf7e4a185cc04de368c8fd1baa1ca26ef8a702e5b2366c59bd145bd"
+    },
+    {
+      "path": "Gaussian_Filters/ukf.py",
+      "module": "Gaussian_Filters",
+      "size": 7840,
+      "sha256": "62b36200cfa96ec214ebddaf4287e44e285ed20d5d51f327af810af33f151655"
+    },
+    {
+      "path": "Gaussian_Filters/ukf_robot_landmarks.py",
+      "module": "Gaussian_Filters",
+      "size": 9352,
+      "sha256": "6a99b4993f0671b631305a57d07adeba22d006c9806aa51eeed824488b3fcb64"
+    },
+    {
+      "path": "Gaussian_Filters/utils.py",
+      "module": "Gaussian_Filters",
+      "size": 3956,
+      "sha256": "70670d762587e9a801b646420479948145014924287a6b5724639f9cfac49525"
+    },
+    {
+      "path": "Mapping/MAP_occupancy_grid_mapping.py",
+      "module": "Mapping",
+      "size": 6506,
+      "sha256": "5382d8772b072e114358d225e2acf9b78040747cc3c2d63237f6d5f81cfd3b7f"
+    },
+    {
+      "path": "Mapping/__init__.py",
+      "module": "Mapping",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Mapping/gridmap_utils.py",
+      "module": "Mapping",
+      "size": 4670,
+      "sha256": "6d90ef64ca9afc7b339334a4353887e5275717ccf860731dcb78b143a520d02a"
+    },
+    {
+      "path": "Mapping/hill_climbing.py",
+      "module": "Mapping",
+      "size": 3408,
+      "sha256": "af1cbc4cd89aa3a7e8a44e637c186d898474c06b35ebf295a90c8c48603746dc"
+    },
+    {
+      "path": "Mapping/occupancy_grid_mapping.py",
+      "module": "Mapping",
+      "size": 6023,
+      "sha256": "66962d34b7b17ab466b7e95c7a11fd428cd3c63851568d5c1db8aadbdefc7246"
+    },
+    {
+      "path": "Mapping/robot_poses.npy",
+      "module": "Mapping",
+      "size": 6848,
+      "sha256": "434b5c28f9b7d70e06334ba8d6aba0dc1dcdd4455ebf2b8a96f183e31b520bf4"
+    },
+    {
+      "path": "Motion_Models/__init__.py",
+      "module": "Motion_Models",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Motion_Models/odometry_motion_model.py",
+      "module": "Motion_Models",
+      "size": 4626,
+      "sha256": "90857e5502aec67be81ecb6e0b2a983e054b76c392ebd593530ab84a4b090cd8"
+    },
+    {
+      "path": "Motion_Models/velocity_motion_model.py",
+      "module": "Motion_Models",
+      "size": 4553,
+      "sha256": "388c3e3730acf8d6787a3a97bd3055bd61ec59a7fbc126acea29f6db244d1f5c"
+    },
+    {
+      "path": "SLAM/__init__.py",
+      "module": "SLAM",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "SLAM/robot_sim.py",
+      "module": "SLAM",
+      "size": 1787,
+      "sha256": "e82366a529d92e9d60c60954bec2d4ecf8b8ca8ff53dab431552b16c4e53193d"
+    },
+    {
+      "path": "SLAM/slam_ekf.py",
+      "module": "SLAM",
+      "size": 2476,
+      "sha256": "60518807728596fbd64e0a35e9c9c896152a7f0299bc2fae709c84887e12144f"
+    },
+    {
+      "path": "SLAM/slam_sim.py",
+      "module": "SLAM",
+      "size": 4310,
+      "sha256": "3b4c8bf71467dff1a0930367f71c20f2b63c9c24174b554c12ee62ce71bea6cf"
+    },
+    {
+      "path": "Sensors_Models/__init__.py",
+      "module": "Sensors_Models",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Sensors_Models/beam_range_model.py",
+      "module": "Sensors_Models",
+      "size": 5362,
+      "sha256": "cc1009bc6a1ff23726ef83b24973937c8e0bfcc80836bb5710a50c3edc9c6cff"
+    },
+    {
+      "path": "Sensors_Models/generate_beam_data.py",
+      "module": "Sensors_Models",
+      "size": 3052,
+      "sha256": "508b7091216b5ba39ed2f0fffa6014156ef03eeaf8a7191ec7608efc3f5aa1b9"
+    },
+    {
+      "path": "Sensors_Models/landmark_model.py",
+      "module": "Sensors_Models",
+      "size": 8358,
+      "sha256": "81c567a0a19833997b6a73c732a5a12cff08194e434fe9836e1e72c2c4ee2f80"
+    },
+    {
+      "path": "Sensors_Models/likelihood_fields.py",
+      "module": "Sensors_Models",
+      "size": 8333,
+      "sha256": "e1b46daa473d7d69268b13d2bbe3c3000f46c4bab7a0e4568aa0b0b4120aea75"
+    },
+    {
+      "path": "Sensors_Models/ray_casting.py",
+      "module": "Sensors_Models",
+      "size": 5764,
+      "sha256": "b11f0afb91f6e2df32d0e89014725c9833be00106e2d13de37d349940422e52d"
+    },
+    {
+      "path": "Sensors_Models/utils.py",
+      "module": "Sensors_Models",
+      "size": 7510,
+      "sha256": "66b7b4636eb77e9763e8b9bb67bec1b6187bed2a5d01079a45c5ea67a62e3ec7"
+    }
+  ]
+}

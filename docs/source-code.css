@@ -1,0 +1,8 @@
+.source-panel,.source-module,.source-preview{padding:22px;margin-bottom:18px}
+.source-commit{margin:12px 0 0;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.source-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.source-module ul{list-style:none;padding:0;margin:12px 0 0;columns:2;column-gap:18px}
+.source-module li{break-inside:avoid;margin:0 0 7px;font-size:12px;overflow-wrap:anywhere}
+.source-preview pre{max-height:540px;overflow:auto;padding:16px;margin:14px 0 0;background:#f8fafd;border:1px solid var(--line);border-radius:8px;font-size:11px;line-height:1.5;white-space:pre;tab-size:4}
+.source-preview .section-title a{font-size:11px}
+@media(max-width:800px){.source-modules{grid-template-columns:1fr}.source-module ul{columns:1}}

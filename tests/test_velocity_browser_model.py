@@ -1,9 +1,11 @@
 """Numerical checks using the real repository sampler and the exported model."""
 import ast
+import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import unittest
 
@@ -106,6 +108,31 @@ class ModelTests(unittest.TestCase):
         packages = {'numpy': {'depends': ['openblas']}, 'openblas': {'depends': []}, 'unused': {'depends': []}}
         self.assertEqual(dependency_closure(packages, ['numpy']), ['numpy', 'openblas'])
         with self.assertRaises(ValueError): dependency_closure(packages, ['missing'])
+
+    def test_main_source_snapshot_matches_checkout(self):
+        manifest = json.loads((ROOT/'docs/source/manifest.json').read_text())
+        expected_commit = os.environ.get('ROBOTICS_SOURCE_COMMIT') or subprocess.check_output(
+            ['git', '-C', str(SOURCE_ROOT), 'rev-parse', 'HEAD'], text=True
+        ).strip()
+        self.assertEqual(manifest['commit'], expected_commit)
+        self.assertEqual(set(manifest['modules']), {
+            'Motion_Models', 'Sensors_Models', 'Gaussian_Filters',
+            'Discrete_Filters', 'SLAM', 'Mapping',
+        })
+        tracked = subprocess.check_output([
+            'git', '-C', str(SOURCE_ROOT), 'ls-files', '-z', '--',
+            *manifest['modules'], '2D_maps',
+        ]).split(b'\0')
+        self.assertEqual(
+            {file['path'] for file in manifest['files']},
+            {path.decode() for path in tracked if path},
+        )
+        self.assertIn('2D_maps', {file['module'] for file in manifest['files']})
+        for file in manifest['files']:
+            source = (SOURCE_ROOT/file['path']).read_bytes()
+            published = (ROOT/'docs/source'/file['path']).read_bytes()
+            self.assertEqual(published, source, file['path'])
+            self.assertEqual(file['sha256'], hashlib.sha256(source).hexdigest())
 
 
 if __name__ == '__main__': unittest.main()

@@ -1,7 +1,16 @@
 {
   "source": "Motion_Models/velocity_motion_model.py",
   "branch": "main",
-  "commit": "13d3fc914c0b7f04ef3cf9caaec1a6831a8b34d2",
+  "commit": "7ca4d8a223f9966eeb0e671b5cd263b64fdf993a",
   "sha256": "388c3e3730acf8d6787a3a97bd3055bd61ec59a7fbc126acea29f6db244d1f5c",
-  "adaptation": "Plot-free export; stable straight-line limit; original alpha noise draws retained"
+  "adaptation": "Plot-free export; stable straight-line limit; original alpha noise draws retained",
+  "source_manifest": "source/manifest.json",
+  "source_modules": [
+    "Motion_Models",
+    "Sensors_Models",
+    "Gaussian_Filters",
+    "Discrete_Filters",
+    "SLAM",
+    "Mapping"
+  ]
 }

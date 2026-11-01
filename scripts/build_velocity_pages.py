@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import shutil
 
+from export_main_sources import export_source_snapshot
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -65,12 +67,17 @@ def build(source_root=None):
             shutil.copyfile(path, target)
     (output/'python').mkdir(exist_ok=True)
     (output/'python/velocity_core.py').write_text(export_core(source))
+    source_manifest = export_source_snapshot(
+        source_root, output, os.environ.get('ROBOTICS_SOURCE_COMMIT')
+    )
     (output/'provenance.json').write_text(json.dumps(dict(
         source='Motion_Models/velocity_motion_model.py',
         branch='main',
-        commit=os.environ.get('ROBOTICS_SOURCE_COMMIT'),
+        commit=source_manifest['commit'],
         sha256=hashlib.sha256(source.encode()).hexdigest(),
         adaptation='Plot-free export; stable straight-line limit; original alpha noise draws retained',
+        source_manifest='source/manifest.json',
+        source_modules=list(source_manifest['modules']),
     ), indent=2)+'\n')
     (output/'.nojekyll').touch()
     print('Static lab generated in docs/')

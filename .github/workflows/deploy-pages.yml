@@ -1,4 +1,4 @@
-name: Build and deploy velocity lab
+name: Build and deploy robotics labs
 on:
   push:
     branches:
@@ -13,14 +13,14 @@ permissions:
   contents: read
 jobs:
   build:
-    if: github.event_name == 'workflow_call'
+    # A reusable workflow keeps the caller's ref; both branches need a fresh build.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/gh-pages'
     permissions:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       ROBOTICS_SOURCE_ROOT: ${{ github.workspace }}/algorithm
-      ROBOTICS_SOURCE_COMMIT: ${{ inputs.source_ref }}
     steps:
       - name: Checkout website branch
         uses: actions/checkout@v4
@@ -30,9 +30,15 @@ jobs:
       - name: Checkout exact algorithm commit from main
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ inputs.source_ref || 'main' }}
           path: algorithm
           persist-credentials: false
+      - name: Record checked-out main commit
+        id: algorithm-revision
+        run: |
+          commit=$(git -C algorithm rev-parse HEAD)
+          echo "ROBOTICS_SOURCE_COMMIT=$commit" >> "$GITHUB_ENV"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -40,7 +46,7 @@ jobs:
         with:
           node-version: '22'
       - run: python -m pip install numpy==2.2.6
-      - name: Build and compare against main sampler
+      - name: Build site and verify main source snapshot
         working-directory: site
         run: python -m unittest discover -s tests -p test_velocity_browser_model.py -v
       - name: Install browser test tools
@@ -57,10 +63,11 @@ jobs:
           node tests/sensor_browser_e2e.cjs
           node tests/ekf_browser_e2e.cjs
           node tests/pf_browser_e2e.cjs
+          node tests/source_browser_e2e.cjs
       - name: Record generated site on gh-pages
         working-directory: site
         env:
-          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_REF: ${{ steps.algorithm-revision.outputs.commit }}
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -87,7 +94,7 @@ jobs:
             site/pf-mobile.png
   deploy:
     needs: build
-    if: github.event_name == 'workflow_call'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/gh-pages'
     permissions:
       pages: write
       id-token: write
@@ -97,25 +104,5 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy tested site
-        id: deployment
-        uses: actions/deploy-pages@v4
-  deploy-pushed-pages:
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout pushed gh-pages commit
-        uses: actions/checkout@v4
-      - name: Upload current site
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
-      - name: Deploy current site
         id: deployment
         uses: actions/deploy-pages@v4
