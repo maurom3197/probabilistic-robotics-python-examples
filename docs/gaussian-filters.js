@@ -1,4 +1,4 @@
-import {runEkfSimulation} from './gaussian-filters-core.js?v=3';
+import {runEkfSimulation} from './gaussian-filters-core.js?v=4';
 import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=3';
 import {createLandmarkEditor} from './gaussian-filters-map.js?v=5';
 

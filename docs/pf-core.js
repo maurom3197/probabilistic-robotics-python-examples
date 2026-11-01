@@ -199,8 +199,8 @@ export function runPfSimulation(p,map=null){
     const turned=p.mode==='laser'&&p.scriptedTurn&&i>2*steps/3;
     const v=turned?.4:p.v;
     const omega=turned?-.05:p.omega;
-    const simSigmaV=p.mode==='laser'?.01:p.sigmaV,simSigmaOmega=p.mode==='laser'?.001:p.sigmaOmega;
-    truth=sampleMotion(truth,v,omega,simSigmaV,simSigmaOmega,dt,rng);
+    // The Python PF scripts propagate simulated ground truth with zero motion noise.
+    truth=sampleMotion(truth,v,omega,0,0,dt,rng);
     nominal=sampleMotion(nominal,v,omega,0,0,dt,rng);
     let prior=null,detected=[],rays=null,neff=null,resampled=false,update=false,cloud=null;
     if(i>0&&i%pfStep===0){

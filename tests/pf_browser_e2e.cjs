@@ -39,9 +39,12 @@ const {chromium}=require('playwright');
       const common={v:.8,omega:.03,sigmaV:.1,sigmaOmega:.02,fov:90,maxRange:8,pfDt:1,duration:4,particles:100,seed:42,scriptedTurn:false};
       const p={...common,mode:'landmark',initialPose:[1,6,.3],sigmaRange:.1,sigmaBearing:1,landmarks:PF_LANDMARKS};
       const first=runPfSimulation(p),second=runPfSimulation(p);
+      const otherLandmarkNoise=runPfSimulation({...p,seed:99,sigmaV:.8,sigmaOmega:.5});
       const laser=runPfSimulation({...common,mode:'laser',v:.33,omega:0,sigmaV:.05,sigmaOmega:.02,fov:360,scriptedTurn:true,
         initialPose:[19.5,4.5,5*Math.PI/6],numRays:12,sigmaLaser:.1,sigmaHit:1,weightHit:.8,weightMax:0,weightRand:.2},laserMap);
       const larger=runPfSimulation({...p,particles:600,duration:2});
+      const otherLaserNoise=runPfSimulation({...common,mode:'laser',v:.33,omega:0,sigmaV:.8,sigmaOmega:.5,fov:360,scriptedTurn:true,
+        initialPose:[19.5,4.5,5*Math.PI/6],numRays:12,sigmaLaser:.1,sigmaHit:1,weightHit:.8,weightMax:0,weightRand:.2,seed:99},laserMap);
       const {EKF_LANDMARKS}=await import(new URL('./gaussian-filters-core.js',location.href).href);
       const laserRays=laser.frames.find(f=>f.rays)?.rays||[];
       const validLaserRays=laserRays.filter(ray=>ray.probability!==null);
@@ -53,6 +56,10 @@ const {chromium}=require('playwright');
         laserProbabilities:validLaserRays.every(ray=>Number.isFinite(ray.probability)&&ray.probability>=0&&ray.probability<=1),
         initialParticlesUniformArea:larger.frames[0].cloud.every(([x,y])=>x>=0&&x<20&&y>=0&&y<20),
         deterministic:JSON.stringify(first.pfErrors)===JSON.stringify(second.pfErrors),
+        groundTruthIndependentOfNoise:[
+          JSON.stringify(first.frames.map(f=>f.truth))===JSON.stringify(otherLandmarkNoise.frames.map(f=>f.truth)),
+          JSON.stringify(laser.frames.map(f=>f.truth))===JSON.stringify(otherLaserNoise.frames.map(f=>f.truth))],
+        simGtIsReference:[first,laser].every(run=>run.frames.every(f=>f.simGtError===0)),
         finite:[first,laser].every(run=>run.frames.every(f=>f.estimate.every(Number.isFinite))),
         simGtErrors:[first.simGtErrors.length,laser.simGtErrors.length],
         noOdometry:[first,laser].every(run=>!('odometry' in run.frames[0]))};
@@ -72,6 +79,8 @@ const {chromium}=require('playwright');
     assert.equal(model.laserRays,12);
     assert.ok(model.validLaserRays>0&&model.laserProbabilities);
     assert.ok(model.deterministic&&model.finite&&model.noOdometry);
+    assert.deepEqual(model.groundTruthIndependentOfNoise,[true,true]);
+    assert.ok(model.simGtIsReference);
     assert.deepEqual(model.simGtErrors,[41,41]);
 
     const blank=await page.locator('#lm-trajectory').evaluate(canvas=>canvas.toDataURL());

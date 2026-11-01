@@ -1,4 +1,4 @@
-import {EKF_LANDMARKS} from './gaussian-filters-core.js?v=3';
+import {EKF_LANDMARKS} from './gaussian-filters-core.js?v=4';
 
 const $=id=>document.getElementById(id);
 const MAX_POINTS=20;

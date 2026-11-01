@@ -1,4 +1,4 @@
-import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=4';
+import {PF_LANDMARKS,loadPfMap,runPfSimulation} from './pf-core.js?v=5';
 import {drawPfTrajectory,drawPfError,drawPfMapPreview,previewPoint} from './pf-plots.js?v=4';
 import {createLandmarkEditor} from './gaussian-filters-map.js?v=5';
 

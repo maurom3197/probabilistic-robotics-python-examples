@@ -103,7 +103,8 @@ export function runEkfSimulation(p) {
   const frames=[frame(0,truth,odometry,estimate,covariance,[],false)];
   const ekfErrors=[{time:0,error:0}],odometryErrors=[{time:0,error:0}];
   for(let i=0;i<steps;i++){
-    truth=sampleMotion(truth,p,simStep,normal);
+    // The Python simulation passes zero motion noise for the ground-truth pose.
+    truth=motion(truth,p.v,p.omega,simStep);
     odometry=sampleMotion(odometry,p,simStep,normal);
     let detected=[],prior=null,update=false;
     if(i>0&&i%ekfStep===0){

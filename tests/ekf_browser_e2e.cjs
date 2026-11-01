@@ -30,11 +30,14 @@ const {chromium}=require('playwright');
       const {runEkfSimulation}=await import(new URL('./gaussian-filters-core.js',location.href).href);
       const p={v:.8,omega:.03,sigmaV:.1,sigmaOmega:.02,fov:60,maxRange:8,sigmaRange:.1,sigmaBearing:1,ekfDt:1,duration:22,seed:42};
       const a=runEkfSimulation(p),b=runEkfSimulation(p),zero=runEkfSimulation({...p,omega:0,duration:2});
+      const otherNoise=runEkfSimulation({...p,seed:99,sigmaV:.8,sigmaOmega:.5});
       const custom=runEkfSimulation({...p,landmarks:[[5,12]],initialPose:[2,3,Math.PI/2]});
       const detections=a.frames.filter(f=>f.detected.length>0);
       return {frames:a.frames.length,updates:a.ekfErrors.length,detected:detections.length,
         reduced:detections.some(f=>f.covariance[0][0]+f.covariance[1][1]<f.prior.covariance[0][0]+f.prior.covariance[1][1]),
         deterministic:JSON.stringify(a.ekfErrors)===JSON.stringify(b.ekfErrors),
+        groundTruthIndependentOfNoise:JSON.stringify(a.frames.map(f=>f.truth))===JSON.stringify(otherNoise.frames.map(f=>f.truth)),
+        odometryStillNoisy:a.frames.some(f=>f.odometryError>0),
         finite:zero.frames.every(f=>f.estimate.every(Number.isFinite)),
         snapshotTimes:a.snapshotIndices.map(i=>a.frames[i].time),
         snapshotPairs:a.snapshotIndices.every(i=>a.frames[i].prior&&a.frames[i].update),
@@ -45,6 +48,7 @@ const {chromium}=require('playwright');
     assert.equal(numerical.updates,22);
     assert.ok(numerical.detected>0&&numerical.reduced);
     assert.ok(numerical.deterministic&&numerical.finite);
+    assert.ok(numerical.groundTruthIndependentOfNoise&&numerical.odometryStillNoisy);
     assert.equal(numerical.snapshotTimes.length,4);
     for(const [time,target] of numerical.snapshotTimes.map((time,i)=>[time,22*(i+1)/4])) assert.ok(Math.abs(time-target)<=1);
     assert.deepEqual(numerical.startPose,[2,3,Math.PI/2]);
