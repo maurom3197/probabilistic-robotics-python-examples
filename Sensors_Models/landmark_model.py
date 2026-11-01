@@ -65,9 +65,9 @@ def landmark_model_sample_pose(z, landmark, sigma):
     m_x, m_y = landmark[:]
     sigma_r, sigma_phi = sigma[:]
 
-    gamma_hat = np.random.uniform(0, 2*math.pi)
-    r_hat = z[0] + np.random.normal(0, sigma_r)
-    phi_hat = z[1] + np.random.normal(0, sigma_phi)
+    gamma_hat = np.random.uniform(0, 2*math.pi) # random angle for the sampled pose
+    r_hat = z[0] + np.random.normal(0, sigma_r) # add noise to the range measurement
+    phi_hat = z[1] + np.random.normal(0, sigma_phi) # add noise to the bearing measurement
 
     x_ = m_x + r_hat * math.cos(gamma_hat)
     y_ = m_y + r_hat * math.sin(gamma_hat)

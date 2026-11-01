@@ -109,10 +109,10 @@ def run_localization_sim(
                 if z is not None:
                     # run the correction step of the EKF
                     ekf.update(
-                        z,
-                        eval_hx=eval_hx_landm,
-                        eval_Ht=eval_Ht_landm,
-                        Qt=Q_landm,
+                        z, # real measurement of the landmark
+                        eval_hx=eval_hx_landm, # function that computes the expected measurement of the landmark given the current state estimate
+                        eval_Ht=eval_Ht_landm, # function that computes the Jacobian of the measurement model
+                        Qt=Q_landm, # covariance matrix of the measurement noise
                         Ht_args=(*ekf.mu, *lmark),  # the Ht function requires a flattened array of parameters
                         hx_args=(ekf.mu, lmark, sigma_z),
                         residual=residual,
