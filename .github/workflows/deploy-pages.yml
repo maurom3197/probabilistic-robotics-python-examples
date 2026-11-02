@@ -13,11 +13,10 @@ permissions:
   contents: read
 jobs:
   build:
-    # A reusable workflow keeps the caller's ref; both branches need a fresh build.
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/gh-pages'
+    # Rebuild from the exact main commit when called by update-pages.yml.
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
-    # Playwright 1.56.1 predates Ubuntu 26.04 support; keep its CI image stable.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -43,29 +42,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - run: python -m pip install numpy==2.2.6
       - name: Build site and verify main source snapshot
         working-directory: site
         run: python -m unittest discover -s tests -p test_velocity_browser_model.py -v
-      - name: Install Playwright package
-        working-directory: site
-        run: npm install --no-save playwright@1.56.1
-      - name: Install Chromium and system dependencies
-        working-directory: site
-        run: npx playwright install --with-deps chromium
-      - name: Browser checks with real Pyodide
-        working-directory: site
-        run: |
-          python -m http.server 8765 --directory docs > /tmp/velocity-http.log 2>&1 &
-          python -c "import urllib.request,time; time.sleep(1); urllib.request.urlopen('http://127.0.0.1:8765/').close()"
-          node tests/velocity_browser_e2e.cjs
-          node tests/sensor_browser_e2e.cjs
-          node tests/ekf_browser_e2e.cjs
-          node tests/pf_browser_e2e.cjs
-          node tests/source_browser_e2e.cjs
       - name: Record generated site on gh-pages
         working-directory: site
         env:
@@ -81,22 +61,9 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site/docs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: velocity-browser-screenshots
-          path: |
-            site/velocity-desktop.png
-            site/velocity-mobile.png
-            site/sensor-desktop.png
-            site/sensor-mobile.png
-            site/ekf-desktop.png
-            site/ekf-mobile.png
-            site/pf-desktop.png
-            site/pf-mobile.png
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/gh-pages'
+    if: github.ref == 'refs/heads/main'
     permissions:
       pages: write
       id-token: write
@@ -105,6 +72,26 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy tested site
+      - name: Deploy built site
+        id: deployment
+        uses: actions/deploy-pages@v4
+  deploy-pushed-pages:
+    if: github.ref == 'refs/heads/gh-pages'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout pushed gh-pages commit
+        uses: actions/checkout@v4
+      - name: Upload current site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+      - name: Deploy current site
         id: deployment
         uses: actions/deploy-pages@v4
