@@ -84,6 +84,7 @@ const {chromium}=require('playwright');
     assert.deepEqual(model.simGtErrors,[41,41]);
 
     const blank=await page.locator('#lm-trajectory').evaluate(canvas=>canvas.toDataURL());
+    await page.locator('#lm-experiment-controls').locator('..').locator('summary').click();
     await page.fill('#lm-duration','8');
     await page.fill('#lm-particles','101');
     await page.click('#lm-run');
@@ -107,6 +108,7 @@ const {chromium}=require('playwright');
     });
     assert.equal(await page.inputValue('#startX'),'2.0');
     assert.equal(await page.inputValue('#startY'),'6.5');
+    await page.locator('#laser-experiment-controls').locator('..').locator('summary').click();
     await page.fill('#laser-duration','4');
     await page.fill('#laser-particles','101');
     await page.fill('#laser-num-rays','12');
