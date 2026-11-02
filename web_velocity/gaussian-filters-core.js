@@ -87,13 +87,13 @@ function frame(time,truth,odometry,estimate,covariance,detected,update,prior=nul
 export function runEkfSimulation(p) {
   if(!Number.isInteger(p.seed)||p.seed<0) throw new Error('Random seed must be a non-negative integer.');
   const landmarks=p.landmarks===undefined?EKF_LANDMARKS:p.landmarks;
-  if(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>Array.isArray(point)&&point.length===2&&point.every(value=>Number.isFinite(value)&&value>=-20&&value<=20))) {
-    throw new Error('The landmark map must contain up to 20 points with x and y between −20 and 20 m.');
+  if(!Array.isArray(landmarks)||landmarks.length>20||!landmarks.every(point=>Array.isArray(point)&&point.length===2&&point.every(value=>Number.isFinite(value)&&value>=0&&value<=30))) {
+    throw new Error('The landmark map must contain up to 20 points with x and y between 0 and 30 m.');
   }
   const map=landmarks.map(point=>[...point]);
   const start=p.initialPose===undefined?[1,6,.3]:p.initialPose;
-  if(!Array.isArray(start)||start.length!==3||!start.every(Number.isFinite)||start[0]<-20||start[0]>20||start[1]<-20||start[1]>20||start[2]<-Math.PI-1e-12||start[2]>Math.PI+1e-12) {
-    throw new Error('Robot starting pose must have x and y between −20 and 20 m and heading between −180° and 180°.');
+  if(!Array.isArray(start)||start.length!==3||!start.every(Number.isFinite)||start[0]<0||start[0]>30||start[1]<0||start[1]>30||start[2]<-Math.PI-1e-12||start[2]>Math.PI+1e-12) {
+    throw new Error('Robot starting pose must have x and y between 0 and 30 m and heading between −180° and 180°.');
   }
   const initialPose=[...start];
   const normal=randomGenerator(p.seed), simStep=.1, steps=Math.round(p.duration/simStep);

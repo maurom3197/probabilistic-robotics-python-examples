@@ -31,7 +31,7 @@
         <fieldset><legend>Landmark measurement noise</legend><div id="ekf-measurement-noise-controls"></div></fieldset>
         <details class="landmark-editor" open><summary>Landmark map</summary>
           <h3 class="ekf-map-subtitle">Robot starting pose</h3><div id="ekf-start-pose-controls"></div>
-          <p class="hint">The orange arrow shows the robot start. Click to add a landmark, or edit coordinates below. Map coordinates are in meters from −20 to 20. JSON files include the start pose and landmarks.</p>
+          <p class="hint">The orange arrow shows the robot start. Click to add a landmark, or edit coordinates below. Map coordinates are in meters from 0 to 30. JSON files include the start pose and landmarks.</p>
           <canvas id="ekf-landmark-map" class="ekf-map-canvas" role="img" aria-label="Editable landmark map; click to add a landmark"></canvas>
           <div class="ekf-map-actions"><button id="ekf-add-landmark" class="button secondary" type="button">+ Add</button><button id="ekf-reset-landmarks" class="button quiet" type="button">Restore example</button><button id="ekf-clear-landmarks" class="button quiet" type="button">Clear</button></div>
           <div class="landmark-list-heading"><span>Landmark</span><span>x [m]</span><span>y [m]</span><span></span></div>
@@ -67,6 +67,6 @@
   <section id="how-it-works" class="explanation card"><p class="eyebrow">FROM THEORY TO CODE</p><h2>What are you seeing?</h2><div class="theory-note"><h3>1. Predict, then correct</h3><p>The EKF predicts pose and covariance from the velocity command. A landmark inside sensor range and field of view supplies a noisy range and bearing measurement; its correction can shrink the position ellipse. Prediction and correction ellipses remain visible at about one-quarter intervals through the run. The plots compare the estimate with simulated ground truth and independent noisy odometry.</p></div><p class="hint">Adapted from <code>Gaussian_Filters/ekf_robot_landmarks.py</code> on the main branch. The browser uses a seeded random generator.</p></section>
   <footer><span>Probabilistic Robotics · Gaussian Filters (EKF)</span><a href="https://github.com/maurom3197/probabilistic-robotics-python-examples/blob/main/Gaussian_Filters/ekf_robot_landmarks.py" target="_blank" rel="noopener">View Python example ↗</a></footer>
   </main>
-  <script type="module" src="./gaussian-filters.js?v=4"></script>
+  <script type="module" src="./gaussian-filters.js?v=5"></script>
 </body>
 </html>

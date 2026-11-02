@@ -18,7 +18,7 @@ const {chromium}=require('playwright');
       ['v','0','2','0.01'],['omega','-1.5','1.5','0.01'],
       ['sigmaV','0','1','0.01'],['sigmaOmega','0','1','0.01'],
       ['sigmaRange','0.05','1','0.01'],['sigmaBearing','1','45','0.01'],
-      ['startX','-20','20','0.1'],['startY','-20','20','0.1'],['startTheta','-180','180','0.01']
+      ['startX','0','30','0.1'],['startY','0','30','0.1'],['startTheta','-180','180','0.01']
     ]){
       for(const control of [id,id+'-slider']){
         assert.equal(await page.getAttribute('#'+control,'min'),min);
@@ -26,12 +26,17 @@ const {chromium}=require('playwright');
         assert.equal(await page.getAttribute('#'+control,'step'),step);
       }
     }
+    assert.equal(await page.getAttribute('#ekf-landmark-0-0','min'),'0');
+    assert.equal(await page.getAttribute('#ekf-landmark-0-0','max'),'30');
+    assert.equal(await page.getAttribute('#ekf-landmark-0-1','min'),'0');
+    assert.equal(await page.getAttribute('#ekf-landmark-0-1','max'),'30');
     const numerical=await page.evaluate(async()=>{
       const {runEkfSimulation}=await import(new URL('./gaussian-filters-core.js',location.href).href);
       const p={v:.8,omega:.03,sigmaV:.1,sigmaOmega:.02,fov:60,maxRange:8,sigmaRange:.1,sigmaBearing:1,ekfDt:1,duration:22,seed:42};
       const a=runEkfSimulation(p),b=runEkfSimulation(p),zero=runEkfSimulation({...p,omega:0,duration:2});
       const otherNoise=runEkfSimulation({...p,seed:99,sigmaV:.8,sigmaOmega:.5});
       const custom=runEkfSimulation({...p,landmarks:[[5,12]],initialPose:[2,3,Math.PI/2]});
+      const boundary=runEkfSimulation({...p,duration:2,landmarks:[[0,30],[30,0]],initialPose:[30,30,0]});
       const detections=a.frames.filter(f=>f.detected.length>0);
       return {frames:a.frames.length,updates:a.ekfErrors.length,detected:detections.length,
         reduced:detections.some(f=>f.covariance[0][0]+f.covariance[1][1]<f.prior.covariance[0][0]+f.prior.covariance[1][1]),
@@ -42,7 +47,9 @@ const {chromium}=require('playwright');
         snapshotTimes:a.snapshotIndices.map(i=>a.frames[i].time),
         snapshotPairs:a.snapshotIndices.every(i=>a.frames[i].prior&&a.frames[i].update),
         customMap:custom.landmarks.length===1&&custom.landmarks[0][0]===5,
-        startPose:custom.frames[0].truth};
+        startPose:custom.frames[0].truth,
+        boundaryMap:boundary.landmarks,
+        boundaryPose:boundary.frames[0].truth};
     });
     assert.equal(numerical.frames,221);
     assert.equal(numerical.updates,22);
@@ -52,6 +59,8 @@ const {chromium}=require('playwright');
     assert.equal(numerical.snapshotTimes.length,4);
     for(const [time,target] of numerical.snapshotTimes.map((time,i)=>[time,22*(i+1)/4])) assert.ok(Math.abs(time-target)<=1);
     assert.deepEqual(numerical.startPose,[2,3,Math.PI/2]);
+    assert.deepEqual(numerical.boundaryMap,[[0,30],[30,0]]);
+    assert.deepEqual(numerical.boundaryPose,[30,30,0]);
     assert.ok(numerical.snapshotPairs&&numerical.customMap);
     const blank=await page.locator('#ekf-trajectory').evaluate(canvas=>canvas.toDataURL());
     await page.click('#run-ekf');

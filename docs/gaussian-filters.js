@@ -1,6 +1,6 @@
-import {runEkfSimulation} from './gaussian-filters-core.js?v=4';
+import {runEkfSimulation} from './gaussian-filters-core.js?v=5';
 import {drawTrajectory,drawErrorChart} from './gaussian-filters-plots.js?v=3';
-import {createLandmarkEditor} from './gaussian-filters-map.js?v=5';
+import {createLandmarkEditor} from './gaussian-filters-map.js?v=6';
 
 const PARAMETERS=[
   ['v','Linear velocity v (m/s)',0,2,.8,.01,'command'],
@@ -11,8 +11,8 @@ const PARAMETERS=[
   ['maxRange','Maximum range (m)',.1,20,8,.1,'sensor'],
   ['sigmaRange','Range σ (m)',.05,1,.1,.01,'measurement-noise'],
   ['sigmaBearing','Bearing σ (°)',1,45,1,.01,'measurement-noise'],
-  ['startX','Start x (m)',-20,20,1,.1,'start-pose'],
-  ['startY','Start y (m)',-20,20,6,.1,'start-pose'],
+  ['startX','Start x (m)',0,30,1,.1,'start-pose'],
+  ['startY','Start y (m)',0,30,6,.1,'start-pose'],
   ['startTheta','Start heading θ (°)',-180,180,17.19,.01,'start-pose'],
   ['ekfDt','EKF interval (s)',.1,1,1,.1,'experiment'],
   ['duration','Duration (s)',2,60,22,1,'experiment'],
@@ -117,7 +117,7 @@ function play(){
 }
 function init(){
   PARAMETERS.forEach(makeControl);
-  editor=createLandmarkEditor(markDraft);
+  editor=createLandmarkEditor(markDraft,{axisRange:[0,30]});
   $('ekf-form').addEventListener('submit',event=>{
     event.preventDefault();$('ekf-error').hidden=true;
     try{
