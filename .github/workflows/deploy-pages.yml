@@ -17,7 +17,8 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/gh-pages'
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 predates Ubuntu 26.04 support; keep its CI image stable.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       ROBOTICS_SOURCE_ROOT: ${{ github.workspace }}/algorithm
@@ -49,11 +50,12 @@ jobs:
       - name: Build site and verify main source snapshot
         working-directory: site
         run: python -m unittest discover -s tests -p test_velocity_browser_model.py -v
-      - name: Install browser test tools
+      - name: Install Playwright package
         working-directory: site
-        run: |
-          npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+        run: npm install --no-save playwright@1.56.1
+      - name: Install Chromium and system dependencies
+        working-directory: site
+        run: npx playwright install --with-deps chromium
       - name: Browser checks with real Pyodide
         working-directory: site
         run: |
