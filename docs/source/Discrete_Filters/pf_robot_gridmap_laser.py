@@ -42,8 +42,6 @@ def run_localization_sim(
     eval_hx_landm,
     eval_hx_lidar,
     sigma_u,
-    sigma_u_pf,
-    sigma_u_odom,
     sigma_z_landm,
     mix_density_lidar,
     distances,
@@ -101,10 +99,10 @@ def run_localization_sim(
         
         if i % pf_step == 0 and i != 0:  # only update pf at dt intervals
             if motion_model == "velocity":
-                pf.predict(u=cmd_vel, sigma_u=sigma_u_pf, g_extra_args=(pf_dt,))
+                pf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(pf_dt,))
             elif motion_model == "odometry":
                 u = get_odometry_command(odom_pos, odom_pos_prev)
-                pf.predict(u=u, sigma_u=sigma_u_odom)
+                pf.predict(u=u, sigma_u=sigma_u)
                 odom_pos_prev = odom_pos.copy()
 
             pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
@@ -226,26 +224,24 @@ def main():
     # Then, choose the Sensor Model
     sensor_model = ["likelihood_fields"]  # 'landmarks', 'beam_range', or 'likelihood_fields' 
 
-    # general noise parameters
-    std_lin_vel = 0.05  # [m/s]
-    std_ang_vel = np.deg2rad(1)  # [rad/s]
-    sigma_u_pf = np.array([std_lin_vel, std_ang_vel])
-    sigma_u_odom_pf = np.array([std_ang_vel, std_lin_vel, std_ang_vel])  # [rot1, trasl, rot2]
     
     # Velocity motion model params
     if motion_model == "velocity":
         dim_u = 2
         eval_gux = sample_velocity_motion_model
+        std_lin_vel = 0.05  # [m/s]
+        std_ang_vel = np.deg2rad(1)  # [rad/s]
+        sigma_u = np.array([std_lin_vel, std_ang_vel])
 
     # odometry motion model params
     elif motion_model == "odometry":
         dim_u = 3
+        eval_gux = sample_odometry_motion_model
         std_rot1 = np.deg2rad(1.0)
         std_transl = 0.05
         std_rot2 = np.deg2rad(0.05)
-        sigma_u_odom = np.array([std_rot1, std_transl, std_rot2])
-        eval_gux = sample_odometry_motion_model
-
+        sigma_u = np.array([std_rot1, std_transl, std_rot2])
+        
     if motion_model not in ["odometry", "velocity"]:
         raise ValueError("motion_model must be 'odometry' or 'velocity'")
 
@@ -334,8 +330,6 @@ def main():
         eval_hx_landm=landmark_sensor_model,
         eval_hx_lidar=laser_range_sensor_model,
         sigma_u=sigma_u,
-        sigma_u_pf=sigma_u_pf,
-        sigma_u_odom=sigma_u_odom_pf,    
         sigma_z_landm=sigma_z_landm,
         sigma_z_lidar=sigma_z_lidar,
         sigma_z_dist=sigma_dist_lf,

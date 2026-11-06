@@ -26,14 +26,14 @@ def run_localization_sim(
     sigma_u,
     sigma_z,
     motion_model="velocity",
-    sigma_u_odom=0.0,
     sim_step_s=0.1,
     particles_plot_step_s=5.0,
     sim_length_s=1,
+    sim_init_pos=np.array([1, 6, 0.3])
 ):
 
-    sim_pos = pf.mu.copy()  # simulated position, copy the initial position set inside the PF
-    odom_pos = pf.mu.copy()  # odometry position, copy the initial position set inside the PF
+    sim_pos = sim_init_pos.copy()
+    odom_pos = sim_init_pos.copy()
 
     cmd_vel = np.array(
         [0.8, 0.03]
@@ -76,7 +76,7 @@ def run_localization_sim(
                 pf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(pf_dt,))
             elif motion_model == "odometry":
                 u = get_odometry_command(odom_pos, odom_pos_prev)
-                pf.predict(u=u, sigma_u=sigma_u_odom)
+                pf.predict(u=u, sigma_u=sigma_u)
                 odom_pos_prev = odom_pos.copy()
 
             pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
@@ -155,6 +155,9 @@ def main():
     seed = 42  # because it is the answer to the Ultimate Question of Life, The Universe and Everything :)
     np.random.seed(seed)
 
+    # robot initial position in map's coordinate
+    init_pos = np.array([1, 6, 0.3])  # x, y, theta
+
     # landmarks list in map's coordinate
     landmarks = np.array(
         [[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
@@ -166,35 +169,35 @@ def main():
     # sim params
     pf_dt = 1.0  # time interval between measurements [s]
     sim_length_s = 22  # length of the simulation [s]
+    std_lin_vel_sim = 0.01  # [m/s]
+    std_ang_vel_sim = np.deg2rad(0.05)  # [rad/s]
+    sigma_u = np.array([std_lin_vel_sim, std_ang_vel_sim])  # std dev for each component of the command signal
 
     # Probabilistic models parameters
     dim_x = 3
     # First, choose the Motion Model
     motion_model = "velocity"  # 'odometry' or 'velocity'
 
-    # general noise parameters
-    std_lin_vel = 0.1  # [m/s]
-    std_ang_vel = np.deg2rad(1.0)  # [rad/s]
-    sigma_u = np.array([std_lin_vel, std_ang_vel])
-    sigma_u_odom = 0
-
     # Velocity motion model params
     if motion_model == "velocity":
         dim_u = 2
         eval_gux = sample_velocity_motion_model
+        std_lin_vel = 0.05  # [m/s]
+        std_ang_vel = np.deg2rad(1)  # [rad/s]
+        sigma_u = np.array([std_lin_vel, std_ang_vel])
 
     # odometry motion model params
     elif motion_model == "odometry":
         dim_u = 3
-        std_rot1 = np.deg2rad(1.0)
-        std_transl = 0.05
-        std_rot2 = np.deg2rad(0.05)
-        sigma_u_odom = np.array([std_rot1, std_transl, std_rot2])
         eval_gux = sample_odometry_motion_model
-
+        std_rot1 = np.deg2rad(5.0)
+        std_transl = 0.1
+        std_rot2 = np.deg2rad(5.0)
+        sigma_u = np.array([std_rot1, std_transl, std_rot2])
+        
     # Define noise params and Q for landmark sensor model
-    std_range = 0.1  # [m]
-    std_bearing = np.deg2rad(1.0)  # [rad]
+    std_range = 0.15  # [m]
+    std_bearing = np.deg2rad(10.0)  # [rad]
     sigma_z = np.array([std_range, std_bearing])
 
     # Initialize the PF
@@ -207,9 +210,11 @@ def main():
         N=1000,
     )
 
-    pf.mu = np.array([1, 6, 0.3])  # x, y, theta
-    pf.Sigma = np.diag([0.1, 0.1, 0.1])
+    # pf.mu = np.array([1, 6, 0.3])  # x, y, theta
+    # pf.Sigma = np.diag([0.1, 0.1, 0.1])
     pf.initialize_particles()
+    # estimate robot mean and covariance from particles
+    pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
 
     run_localization_sim(
         pf,
@@ -222,9 +227,9 @@ def main():
         sigma_u=sigma_u,
         sigma_z=sigma_z,
         motion_model=motion_model,
-        sigma_u_odom=sigma_u_odom,
         particles_plot_step_s=3.0,
         sim_length_s=sim_length_s,
+        sim_init_pos=init_pos,
     )
 
     plt.close("all")
