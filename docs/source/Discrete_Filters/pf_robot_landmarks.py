@@ -160,7 +160,11 @@ def main():
 
     # landmarks list in map's coordinate
     landmarks = np.array(
-        [[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
+        [[5, 12], [10.5, 7.5], [16.5, 15], 
+         [10, 14], [5, 6], [14.5, 11.5], 
+         [14, 9], [8, 15.5], [13.5, 17], 
+         [15.4, 18], [18.4, 20], [20, 18.4], [20, 20],
+         ]
     )
     # sensor params
     max_range = 8.0
@@ -182,8 +186,8 @@ def main():
     if motion_model == "velocity":
         dim_u = 2
         eval_gux = sample_velocity_motion_model
-        std_lin_vel = 0.05  # [m/s]
-        std_ang_vel = np.deg2rad(1)  # [rad/s]
+        std_lin_vel = 0.1  # [m/s]
+        std_ang_vel = np.deg2rad(3)  # [rad/s]
         sigma_u = np.array([std_lin_vel, std_ang_vel])
 
     # odometry motion model params
@@ -192,7 +196,7 @@ def main():
         eval_gux = sample_odometry_motion_model
         std_rot1 = np.deg2rad(5.0)
         std_transl = 0.1
-        std_rot2 = np.deg2rad(5.0)
+        std_rot2 = np.deg2rad(1.0)
         sigma_u = np.array([std_rot1, std_transl, std_rot2])
         
     # Define noise params and Q for landmark sensor model
@@ -210,8 +214,6 @@ def main():
         N=1000,
     )
 
-    # pf.mu = np.array([1, 6, 0.3])  # x, y, theta
-    # pf.Sigma = np.diag([0.1, 0.1, 0.1])
     pf.initialize_particles()
     # estimate robot mean and covariance from particles
     pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)

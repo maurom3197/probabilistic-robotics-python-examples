@@ -1,7 +1,5 @@
 import math
 import numpy as np
-from Sensors_Models.utils import compute_p_hit_dist
-from Discrete_Filters.utils import normalize_angle
 
 def sample_velocity_motion_model(x, u, a, dt):
     """Sample velocity motion model.
@@ -61,7 +59,6 @@ def get_odometry_command(odom_pose, odom_pose_prev):
 
     return np.array([rot1, trasl, rot2])
 
-
 def sample_odometry_motion_model(x, u, a):
     """Sample odometry motion model.
     Arguments:
@@ -102,7 +99,7 @@ def landmark_range_bearing_model(robot_pose, landmark, sigma):
     """""
     Sampling z from landmark model for range and bearing
     robot pose: can be the estimated robot pose or the particles
-    """ ""
+    """""
     if robot_pose is list:
         robot_pose = np.array(robot_pose)
 

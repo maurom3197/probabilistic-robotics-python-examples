@@ -6,8 +6,8 @@ from Gaussian_Filters.plot_utils import plot_covariance
 import matplotlib.pyplot as plt
 from Gaussian_Filters.ekf import RobotEKF
 from Gaussian_Filters.probabilistic_models import (
-    sample_velocity_motion_model,
-    sample_odometry_motion_model,
+    velocity_motion_model,
+    odometry_motion_model,
     get_odometry_command,
     landmark_range_bearing_model,
     landmark_range_bearing_sensor,
@@ -28,7 +28,6 @@ def run_localization_sim(
     sigma_u,
     sigma_z,
     motion_model="velocity",
-    sigma_u_odom=0.0,
     sim_step_s=0.1,
     ellipse_step_s=5.0,
     sim_length_s=1,
@@ -70,21 +69,21 @@ def run_localization_sim(
 
         # Simulate robot motion for sim_step_s seconds using the Motion Model.
         # the sampling motion model already include Gaussian noise on the command
-        sim_pos = sample_velocity_motion_model(sim_pos, cmd_vel, np.zeros_like(sigma_u), sim_step_s)
+        sim_pos = velocity_motion_model(sim_pos, cmd_vel, sim_step_s)
         track.append(sim_pos)
 
         # to simulate the error in the odometry reading, we take another Gaussian sample of the velocity command
-        # noisy_vel = cmd_vel + sigma_u * sim_noise_generator.normal(size=cmd_vel.shape)
-        odom_pos = sample_velocity_motion_model(odom_pos, cmd_vel, sigma_u, sim_step_s)
+        noisy_vel = cmd_vel + np.random.normal(0, sigma_u, size=cmd_vel.shape)
+        odom_pos = velocity_motion_model(odom_pos, noisy_vel, sim_step_s)
         track_odom.append(odom_pos)
 
         if i % ekf_step == 0 and i != 0:  # only update ekf at dt intervals
             # run the prediction step of the EKF
             if motion_model == "velocity":
-                ekf.predict(u=cmd_vel, sigma_u=sigma_u, g_extra_args=(ekf_dt,))
+                ekf.predict(u=cmd_vel, g_extra_args=(ekf_dt,))
             elif motion_model == "odometry":
                 u = get_odometry_command(odom_pos, odom_pos_prev)
-                ekf.predict(u=u, sigma_u=sigma_u_odom)
+                ekf.predict(u=u)
                 odom_pos_prev = odom_pos.copy()
 
             # plot the prior covariance ellipses every ellipse_step_s seconds
@@ -114,7 +113,7 @@ def run_localization_sim(
                         eval_Ht=eval_Ht_landm, # function that computes the Jacobian of the measurement model
                         Qt=Q_landm, # covariance matrix of the measurement noise
                         Ht_args=(*ekf.mu, *lmark),  # the Ht function requires a flattened array of parameters
-                        hx_args=(ekf.mu, lmark, sigma_z),
+                        hx_args=(ekf.mu, lmark),  # the hx function requires a tuple of parameters
                         residual=residual,
                         angle_idx=-1,
                     )
@@ -172,9 +171,16 @@ def main():
     seed = 42  # because it is the answer to the Ultimate Question of Life, The Universe and Everything :)
     np.random.seed(seed)
 
+    # Define robot starting pose
+    init_robot_pose = np.array([1, 6, 0.3]) # x,y,theta
+
     # landmarks list in map's coordinate
     landmarks = np.array(
-        [[5, 12], [10.5, 7.5], [16.5, 15], [10, 14], [5, 6], [14.5, 11.5], [14, 9], [8, 15.5], [13.5, 17], [18.4, 18]]
+        [[5, 12], [10.5, 7.5], [16.5, 15], 
+         [10, 14], [5, 6], [14.5, 11.5], 
+         [14, 9], [8, 15.5], [13.5, 17], 
+         [15.4, 18], [18.4, 20], [20, 18.4], [20, 20],
+         ]
     )
     # sensor params
     max_range = 8.0
@@ -189,17 +195,17 @@ def main():
     # First, choose the Motion Model
     motion_model = "velocity"  # 'odometry' or 'velocity'
 
-    # general noise parameters
+    # simulated odometry noise parameters
     std_lin_vel = 0.1  # [m/s]
-    std_ang_vel = np.deg2rad(1.0)  # [rad/s]
+    std_ang_vel = np.deg2rad(2.0)  # [rad/s]
     sigma_u = np.array([std_lin_vel, std_ang_vel])
-    sigma_u_odom = 0
 
     # Velocity motion model params
     if motion_model == "velocity":
         dim_u = 2
+        sigma_u = np.array([std_lin_vel, std_ang_vel])
         Mt = np.diag([std_lin_vel**2, std_ang_vel**2])
-        eval_gux = sample_velocity_motion_model
+        eval_gux = velocity_motion_model
         _, eval_Gt, eval_Vt = velocity_mm_simpy()
 
     # odometry motion model params
@@ -208,9 +214,9 @@ def main():
         std_rot1 = np.deg2rad(1.0)
         std_transl = 0.05
         std_rot2 = np.deg2rad(0.05)
-        sigma_u_odom = np.array([std_rot1, std_transl, std_rot2])
+        sigma_u = np.array([std_rot1, std_transl, std_rot2])
         Mt = np.diag([std_rot1**2, std_transl**2, std_rot2**2])
-        eval_gux = sample_odometry_motion_model
+        eval_gux = odometry_motion_model
         _, eval_Gt, eval_Vt = odometry_mm_simpy()
 
     # Define noise params and Q for landmark sensor model
@@ -223,7 +229,8 @@ def main():
 
     # Initialize the EKF
     ekf = RobotEKF(dim_x=dim_x, dim_u=dim_u, eval_gux=eval_gux, eval_Gt=eval_Gt, eval_Vt=eval_Vt)
-    ekf.mu = np.array([1, 6, 0.3])  # x, y, theta
+    ekf.mu = init_robot_pose + np.random.normal(0, 0.01, size=init_robot_pose.shape)  # x, y, theta
+    print(f"Initial ekf pose: {ekf.mu}")
     ekf.Sigma = np.diag([0.1, 0.1, 0.1])
     ekf.Mt = Mt
 
@@ -240,7 +247,6 @@ def main():
         sigma_u=sigma_u,
         sigma_z=sigma_z,
         motion_model=motion_model,
-        sigma_u_odom=sigma_u_odom,
         ellipse_step_s=2.0,
         sim_length_s=sim_length_s,
     )
