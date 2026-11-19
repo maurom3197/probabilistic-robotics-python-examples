@@ -100,7 +100,7 @@ class RobotUKF:
         # weights for the means and covariances re-estimation w/ unscented transform
         self.Wm, self.Wc = points.Wm, points.Wc
     
-    def predict(self, u, sigma_u, g_extra_args=(), mean_fn=np.dot, residual_fn=np.subtract, **kwargs):
+    def predict(self, u, g_extra_args=(), mean_fn=np.dot, residual_fn=np.subtract, **kwargs):
         """
         Update the state prediction using the control input u and compute the relative uncertainty ellipse
         Parameters
@@ -108,9 +108,6 @@ class RobotUKF:
 
         u : np.array
             command for this step.
-
-        sigma_u : np.array
-            std dev for each component of the command signal
 
         extra_args : tuple
             any additional required parameter: dt
@@ -125,7 +122,7 @@ class RobotUKF:
 
         # pass the sigma points through the non-linear motion model function
         for i in range(self.num_sigma_points):
-            self.sigmas_bar_g[i] = self.eval_gux(sigmas[i], u, sigma_u, *g_extra_args)
+            self.sigmas_bar_g[i] = self.eval_gux(sigmas[i], u, *g_extra_args)
 
         self.mu, self.Sigma = self.unscented_transform(self.sigmas_bar_g, self.R, mean_fn, residual_fn, **kwargs)
 

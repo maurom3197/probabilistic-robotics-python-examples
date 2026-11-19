@@ -56,7 +56,7 @@ def landmark_model_sample_pose(z, landmark, sigma):
     """""
     Sample a robot pose from the landmark model
     Inputs:
-        - z: the measurements features (range and bearing of the landmark from the sensor) [r, phi]
+        - z: the measurements features (range and bearing of the landmark) [r, phi]
         - landmark: the landmark position in the map [m_x, m_y]
         - sigma: the standard deviation of the measurement noise [sigma_r, sigma_phi]
     Outputs:
@@ -205,13 +205,12 @@ def main():
     ##########################################
     ### Sampling poses from landmark model ###
     ##########################################
-    if len(z) == 0:
-        print("No landmarks detected!")
-        return
-    
-    # consider only the first landmark detected
-    landmark = landmarks[0]
-    z = landmark_range_bearing_model(robot_pose, landmark, sigma_model)
+   
+    # Inverse sensor model: sample robot poses from the landmark model 
+    # p(x|z,m)
+
+    z = np.array([2.0, -math.pi/4])  # [range, bearing] real values of range and bearing of the landmark
+    landmark = np.array([5., 2.])  # landmark position in the map
 
     # plot landmark
     plt.plot(landmark[0], landmark[1], "sk", ms=10)

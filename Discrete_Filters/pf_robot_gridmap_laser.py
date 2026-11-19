@@ -94,7 +94,8 @@ def run_localization_sim(
         track.append(sim_pos)
 
         # to simulate the error in the odometry reading, we take another Gaussian sample of the velocity command
-        odom_pos = sample_velocity_motion_model(odom_pos, cmd_vel, sigma_u, sim_step_s)
+        noisy_vel = cmd_vel + np.random.normal(0, sigma_u, size=cmd_vel.shape)
+        odom_pos = velocity_motion_model(odom_pos, noisy_vel, sim_step_s)
         track_odom.append(odom_pos)
         
         if i % pf_step == 0 and i != 0:  # only update pf at dt intervals
@@ -229,8 +230,8 @@ def main():
     if motion_model == "velocity":
         dim_u = 2
         eval_gux = sample_velocity_motion_model
-        std_lin_vel = 0.05  # [m/s]
-        std_ang_vel = np.deg2rad(1)  # [rad/s]
+        std_lin_vel = 0.1  # [m/s]
+        std_ang_vel = np.deg2rad(3)  # [rad/s]
         sigma_u = np.array([std_lin_vel, std_ang_vel])
 
     # odometry motion model params
@@ -282,11 +283,11 @@ def main():
     p_gridmap, distance_grid = precompute_likelihood_field(grid_map, sigma=sigma_dist_lf, max_dist=lidar_max_range)
     
     # visualize the likelihood fields
-    # fig, ax = plt.subplots()
-    # plot_likelihood_fields(p_gridmap, ax=ax)
-    # fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
-    # ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
-    # plt.show()
+    fig, ax = plt.subplots()
+    plot_likelihood_fields(p_gridmap, ax=ax)
+    fig.colorbar(plt.cm.ScalarMappable(cmap='gray'), ax=ax, label='p(z|x)')
+    ax.set_title('Pre-computed Likelihood Fields', fontsize = 14)
+    plt.show()
 
     # Initialize the PF
     pf = RobotPF(
@@ -315,6 +316,9 @@ def main():
         pf.initialize_particles(
             initial_dist_fn=initial_gaussian_particles, 
             initial_dist_args=(pf.dim_x, pf.mu, sim_init_pos, 2, grid_map))
+
+    # estimate robot mean and covariance from particles
+    pf.estimate(mean_fn=state_mean, residual_fn=residual, angle_idx=2)
 
     run_localization_sim(
         pf,

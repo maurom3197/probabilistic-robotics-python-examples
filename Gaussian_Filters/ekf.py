@@ -23,7 +23,7 @@ class RobotEKF:
 
         self._I = np.eye(dim_x)  # identity matrix used for computations
 
-    def predict(self, u, sigma_u, g_extra_args=()):
+    def predict(self, u, g_extra_args=()):
         """
         Update the state prediction using the control input u and compute the relative uncertainty ellipse
         Parameters
@@ -31,9 +31,6 @@ class RobotEKF:
 
         u : np.array
             command for this step.
-
-        sigma_u : np.array
-            std dev for each component of the command signal
 
         extra_args : tuple
             any additional required parameter: dt
@@ -43,7 +40,7 @@ class RobotEKF:
             self.Sigma: the covariance matrix of the state prediction
         """
         # Update the state prediction evaluating the motion model
-        self.mu = self.eval_gux(self.mu, u, sigma_u, *g_extra_args)
+        self.mu = self.eval_gux(self.mu, u, *g_extra_args)
 
         args = (*self.mu, *u)
         # Update the covariance matrix of the state prediction,
