@@ -5,34 +5,23 @@ import sympy
 from sympy import symbols, Matrix
 
 
-def sample_velocity_motion_model(x, u, a, dt):
-    """Sample velocity motion model.
+def velocity_motion_model(x, u, dt):
+    """Compute velocity motion model.
     Arguments:
     x -- pose of the robot before moving [x, y, theta]
     u -- velocity reading obtained from the robot [v, w]
-    sigma -- noise parameters of the motion model [a1, a2, a3, a4, a5, a6] or [std_dev_v, std_dev_w]
     dt -- time interval of prediction
     """
 
-    sigma = np.ones((3))
-    if a.shape == u.shape:
-        sigma[:-1] = a[:]
-        sigma[-1] = a[1] * 0.5
-    else:
-        sigma[0] = a[0] * u[0] ** 2 + a[1] * u[1] ** 2
-        sigma[1] = a[2] * u[0] ** 2 + a[3] * u[1] ** 2
-        sigma[2] = a[4] * u[0] ** 2 + a[5] * u[1] ** 2
-
-    # sample noisy velocity commands to consider actuaction errors and unmodeled dynamics
-    v_hat = u[0] + np.random.normal(0, sigma[0])
-    w_hat = u[1] + np.random.normal(0, sigma[1])
-    gamma_hat = np.random.normal(0, sigma[2])
+    # decompose command component
+    v = u[0] 
+    w = u[1] 
 
     # compute the new pose of the robot according to the velocity motion model
-    r = v_hat / w_hat
-    x_prime = x[0] - r * sin(x[2]) + r * sin(x[2] + w_hat * dt)
-    y_prime = x[1] + r * cos(x[2]) - r * cos(x[2] + w_hat * dt)
-    theta_prime = x[2] + w_hat * dt + gamma_hat * dt
+    r = v / w
+    x_prime = x[0] - r * sin(x[2]) + r * sin(x[2] + w * dt)
+    y_prime = x[1] + r * cos(x[2]) - r * cos(x[2] + w * dt)
+    theta_prime = x[2] + w * dt
 
     return np.array([x_prime, y_prime, theta_prime])
 
@@ -57,26 +46,17 @@ def get_odometry_command(odom_pose, odom_pose_prev):
     return np.array([rot1, trasl, rot2])
 
 
-def sample_odometry_motion_model(x, u, a):
-    """Sample odometry motion model.
+def odometry_motion_model(x, u):
+    """Compute odometry motion model.
     Arguments:
     x -- pose of the robot before moving [x, y, theta]
     u -- odometry reading obtained from the robot [rot1, trans, rot2]
-    a -- noise parameters of the motion model [a1, a2, a3, a4] or [std_rot1, std_trans, std_rot2]
     """
 
-    sigma = np.ones((3))
-    if a.shape == u.shape:
-        sigma = a
-    else:
-        sigma[0] = a[0] * abs(u[0]) + a[1] * abs(u[1])
-        sigma[1] = a[2] * abs(u[1]) + a[3] * (abs(u[0]) + abs(u[2]))
-        sigma[2] = a[0] * abs(u[2]) + a[1] * abs(u[1])
-
-    # noisy odometric transformations: 1 translation and 2 rotations
-    delta_hat_r1 = u[0] + np.random.normal(0, sigma[0])
-    delta_hat_t = u[1] + np.random.normal(0, sigma[1])
-    delta_hat_r2 = u[2] + np.random.normal(0, sigma[2])
+    # odometric transformations: 1 translation and 2 rotations
+    delta_hat_r1 = u[0]
+    delta_hat_t = u[1]
+    delta_hat_r2 = u[2]
 
     # new pose predicted for the robot
     x_prime = x[0] + delta_hat_t * math.cos(x[2] + delta_hat_r1)
@@ -86,15 +66,15 @@ def sample_odometry_motion_model(x, u, a):
     return np.array([x_prime, y_prime, theta_prime])
 
 
-def landmark_range_bearing_model(robot_pose, landmark, sigma):
+def landmark_range_bearing_model(robot_pose, landmark):
     """""
     Sampling z from landmark model for range and bearing
     """ ""
     m_x, m_y = landmark[:]
     x, y, theta = robot_pose[:]
 
-    r_ = math.dist([x, y], [m_x, m_y]) + np.random.normal(0.0, sigma[0])
-    phi_ = math.atan2(m_y - y, m_x - x) - theta + np.random.normal(0.0, sigma[1])
+    r_ = math.dist([x, y], [m_x, m_y]) 
+    phi_ = math.atan2(m_y - y, m_x - x) - theta 
     return np.array([r_, phi_])
 
 
@@ -102,7 +82,12 @@ def landmark_range_bearing_sensor(robot_pose, landmark, sigma, max_range=6.0, fo
     """""
     Simulate the detection of a landmark with a virtual sensor able to estimate range and bearing
     """ ""
-    z = landmark_range_bearing_model(robot_pose, landmark, sigma)
+    m_x, m_y = landmark[:]
+    x, y, theta = robot_pose[:]
+    
+    r_ = math.dist([x, y], [m_x, m_y]) + np.random.normal(0.0, sigma[0])
+    phi_ = math.atan2(m_y - y, m_x - x) - theta + np.random.normal(0.0, sigma[1])
+    z = np.array([r_, phi_])
 
     # filter z for a more realistic sensor model (add a max range distance and a FOV)
     if z[0] > max_range or abs(z[1]) > fov / 2:
@@ -143,7 +128,7 @@ def velocity_mm_Vt(x, u, dt):
                 dt * v * cos(theta + w * dt) / w + v * sin(theta) / w**2 - v * sin(theta + w * dt) / w**2,
             ],
             [
-                -cos(theta) / w - cos(theta + w * dt) / w,
+                cos(theta) / w - cos(theta + w * dt) / w,
                 dt * v * sin(theta + w * dt) / w - v * cos(theta) / w**2 + v * cos(theta + w * dt) / w**2,
             ],
             [0, dt],
@@ -156,7 +141,20 @@ def velocity_mm_Vt(x, u, dt):
 def landmark_sm_Ht(x, mx, my):
     x, y = x[0], x[1]
     div = sqrt((mx - x) ** 2 + (my - y) ** 2)
-    Ht = np.array([[(-mx + x) / div, (-my + y) / div, 0], [-(-my + y) / div, -(mx - x) / div, -1]])
+    Ht = np.array(
+        [
+            [
+                (-mx + x) / div, 
+                (-my + y) / div, 
+                0,
+            ], 
+            [
+                -(-my + y) / div, 
+                -(mx - x) / div,
+                -1,
+            ],
+        ]
+        )
 
     return Ht
 
